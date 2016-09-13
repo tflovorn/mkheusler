@@ -21,7 +21,22 @@ def _main():
             help="System name (obtained from atoms if not specified)")
     parser.add_argument("--soc", action="store_true",
             help="Use spin-orbit coupling")
+    parser.add_argument("--ecutwfc", type=float, default=None,
+            help="Wavefunction plane-wave cutoff energy (Ry)")
+    parser.add_argument("--ecutrho", type=float, default=None,
+            help="Charge density plane-wave cutoff energy (Ry)")
+    parser.add_argument("--sigma", type=float, default=0.02,
+            help="Delta-function smearing constant (Ry)")
+    parser.add_argument("--Nk_scf", type=int, default=16,
+            help="Number of k-points to use in SCF calculation (same in each direction)")
+    parser.add_argument("--Nk_nscf", type=int, default=8,
+            help="Number of k-points to use in NSCF calculation (same in each direction)")
+    parser.add_argument("--Nk_bands", type=int, default=20,
+            help="Number of k-points to use for each panel in bands calculation")
     args = parser.parse_args()
+
+    # TODO intial magnetic moment specifiers?
+    # TODO handle cutoff defaults / SOC / PP interaction
 
     atoms = args.atoms.split(',')
     if len(atoms) == 3:
@@ -38,6 +53,7 @@ def _main():
     system = bulk(atoms, 'fcc', a=args.latconst)
     verify_SC10_fcc(system, args.latconst)
 
+    # SC10 = Setyawan and Curtarolo, Comp. Mater. Sci. 49, 299 (2010).
     # SC10 FCC cell 111 = cubic conventional cell 111
     # --> Scaled positions along body diagonal are same as in
     # cubic conventional cell.
@@ -58,6 +74,15 @@ def _main():
     print(system.get_scaled_positions())
     print(system.get_initial_magnetic_moments())
     print(system.get_tags())
+
+    kpath_syms = ["Gamma", "X", "W", "K", "Gamma", "L", "U", "W", "L", "K", "W", "U", "X"]
+    SC10_kpts = {"Gamma": np.array([0.0, 0.0, 0.0]),
+            "K": np.array([3/8, 3/8, 3/4]),
+            "L": np.array([1/2, 1/2, 1/2]),
+            "U": np.array([5/8, 1/4, 5/8]),
+            "W": np.array([1/2, 1/4, 3/4]),
+            "X": np.array([1/2, 0.0, 1/2])}
+    kpath = [SC10_kpts[sym] for sym in kpath_syms]
 
 if __name__ == "__main__":
     _main()
