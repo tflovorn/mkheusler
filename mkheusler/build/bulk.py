@@ -2,7 +2,7 @@ import argparse
 import os
 import numpy as np
 from ase.lattice import bulk
-from mkheusler.pwscf.build import build_qe
+from mkheusler.pwscf.build import build_pw2wan, build_bands, build_qe
 from mkheusler.wannier.build import Winfile
 from mkheusler.build.util import _base_dir, _global_config
 
@@ -176,6 +176,16 @@ def _main():
     write_qe_input(prefix, wannier_dir, qe_input, "scf")
     write_qe_input(prefix, wannier_dir, qe_input, "nscf")
     write_qe_input(prefix, bands_dir, qe_input, "bands")
+
+    pw2wan_input = build_pw2wan(prefix, args.soc)
+    pw2wan_path = os.path.join(wannier_dir, "{}.pw2wan.in".format(prefix))
+    with open(pw2wan_path, 'w') as fp:
+        fp.write(pw2wan_input)
+
+    bands_post_input = build_bands(prefix)
+    bands_post_path = os.path.join(bands_dir, "{}.bands_post.in".format(prefix))
+    with open(bands_post_path, 'w') as fp:
+        fp.write(bands_post_input)
 
     wannier_input = Winfile(system, qe_config, wan_valence, num_wann)
     win_path = os.path.join(wannier_dir, "{}.win".format(prefix))
