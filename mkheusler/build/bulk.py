@@ -3,6 +3,7 @@ import os
 import numpy as np
 from ase.lattice import bulk
 from mkheusler.pwscf.build import build_qe
+from mkheusler.wannier.build import Winfile
 from mkheusler.build.util import _base_dir, _global_config
 
 def verify_SC10_fcc(system, a):
@@ -100,10 +101,22 @@ def _main():
     atoms = args.atoms.split(',')
     if len(atoms) == 3:
         system_type = "HH"
+        wan_valence = {atoms[0]: "spd", atoms[1]: "spd", atoms[2]: "sp"}
+        if args.soc:
+            num_wann = 44
+        else:
+            num_wann = 22
+
         if args.prefix is None:
             prefix = "{}{}{}_bulk".format(atoms[0], atoms[1], atoms[2])
     elif len(atoms) == 4:
         system_type = "FH"
+        wan_valence = {atoms[0]: "spd", atoms[2]: "spd", atoms[3]: "sp"}
+        if args.soc:
+            num_wann = 62
+        else:
+            num_wann = 31
+
         if args.prefix is None:
             prefix = "{}2{}{}_bulk".format(atoms[0], atoms[2], atoms[3])
     else:
@@ -129,11 +142,6 @@ def _main():
             [1/2, 1/2, 1/2]])
 
     # TODO may want to revise num_wann and num_bands values
-    if args.soc:
-        num_wann = 18*len(args.atoms)
-    else:
-        num_wann = 9*len(args.atoms)
-
     num_bands = 2*num_wann
 
     band_path_syms = ["Gamma", "X", "W", "K", "Gamma", "L", "U", "W", "L", "K", "W", "U", "X"]
@@ -168,6 +176,11 @@ def _main():
     write_qe_input(prefix, wannier_dir, qe_input, "scf")
     write_qe_input(prefix, wannier_dir, qe_input, "nscf")
     write_qe_input(prefix, bands_dir, qe_input, "bands")
+
+    wannier_input = Winfile(system, qe_config, wan_valence, num_wann)
+    win_path = os.path.join(wannier_dir, "{}.win".format(prefix))
+    with open(win_path, 'w') as fp:
+        fp.write(wannier_input)
 
 if __name__ == "__main__":
     _main()
