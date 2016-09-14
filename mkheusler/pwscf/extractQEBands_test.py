@@ -1,5 +1,5 @@
 import unittest
-from tmd.pwscf.extractQEBands import extractQEBands
+from mkheusler.pwscf.extractQEBands import extractQEBands
 
 class TestExtractQEBands(unittest.TestCase):
     def test_ExtractQEBandsTa(self):
