@@ -35,9 +35,9 @@ def get_pseudo(syms):
 def make_qe_config(system, latconst, soc, num_bands, ecutwfc, ecutrho, degauss, Nk, band_path):
     base = _base_dir()
     if soc:
-        pseudo_dir = os.path.join(base, "pseudo_SG15_soc")
+        pseudo_dir = os.path.join(base, "pseudo", "SG15", "soc")
     else:
-        pseudo_dir = os.path.join(base, "pseudo_SG15_no_soc")
+        pseudo_dir = os.path.join(base, "pseudo", "SG15", "base_no_soc")
 
     pseudo = get_pseudo(system.get_chemical_symbols())
     weight = get_weight(system)
