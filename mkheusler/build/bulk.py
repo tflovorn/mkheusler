@@ -37,7 +37,7 @@ def make_qe_config(system, latconst, soc, num_bands, ecutwfc, ecutrho, degauss, 
     if soc:
         pseudo_dir = os.path.join(base, "pseudo_SG15_soc")
     else:
-        pseudo_dir = os.path.join(base, "pseudo_gbrv")
+        pseudo_dir = os.path.join(base, "pseudo_SG15_no_soc")
 
     pseudo = get_pseudo(system.get_chemical_symbols())
     weight = get_weight(system)
@@ -81,20 +81,14 @@ def _main():
 
     # TODO intial magnetic moment specifiers?
 
-    # NOTE - assuming no SOC = GBRV and SOC = SG15.
+    # NOTE - assuming no SOC = SG15 and SOC = SG15 plus SOC.
     if args.ecutwfc is None:
-        if args.soc:
-            ecutwfc = 60.0
-        else:
-            ecutwfc = 40.0
+        ecutwfc = 60.0
     else:
         ecutwfc = args.ecutwfc
 
     if args.ecutrho is None:
-        if args.soc:
-            ecutrho = 240.0
-        else:
-            ecutrho = 200.0
+        ecutrho = 240.0
     else:
         ecutrho = args.ecutrho
 
@@ -109,6 +103,8 @@ def _main():
 
         if args.prefix is None:
             prefix = "{}{}{}_bulk".format(atoms[0], atoms[1], atoms[2])
+            if args.soc:
+                prefix = "{}_soc".format(prefix)
     elif len(atoms) == 4:
         system_type = "FH"
         wan_valence = {atoms[0]: "spd", atoms[2]: "spd", atoms[3]: "sp"}
@@ -119,6 +115,8 @@ def _main():
 
         if args.prefix is None:
             prefix = "{}2{}{}_bulk".format(atoms[0], atoms[2], atoms[3])
+            if args.soc:
+                prefix = "{}_soc".format(prefix)
     else:
         raise ValueError("must specify 3 or 4 atoms (half-Heusler or full-Heusler)")
 
