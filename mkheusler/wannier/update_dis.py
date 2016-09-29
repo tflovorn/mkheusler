@@ -1,8 +1,8 @@
 from argparse import ArgumentParser
 import os
-from tmd.pwscf.parseScf import fermi_from_scf
-from tmd.wannier.wannier_util import global_config
-from tmd.wannier.build import Update_Disentanglement
+from mkheusler.pwscf.parseScf import fermi_from_scf
+from mkheusler.wannier.wannier_util import global_config
+from mkheusler.wannier.build import Update_Disentanglement
 
 def _main():
     parser = ArgumentParser(description="Update disentanglement window in W90 input")

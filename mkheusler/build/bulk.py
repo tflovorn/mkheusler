@@ -14,6 +14,14 @@ def verify_SC10_fcc(system, a):
     if not np.array_equal(system.cell, SC10_fcc):
         raise ValueError("system does not follow Setyawan FCC cell convention")
 
+def sc10_fcc_path_syms():
+    # SC10 path
+    band_path_syms = ["Gamma", "X", "W", "K", "Gamma", "L", "U", "W", "L", "K", "W", "U", "X"]
+    band_path_labels = ["$\\Gamma$", "$X$", "$W$", "$K$", "$\\Gamma$", "$L$", "$U$",
+            "$W$", "$L$", "$K$", "$W$", "$U$", "$X$"]
+
+    return band_path_syms, band_path_labels
+
 def get_num_bands(system, system_type, atoms, soc):
     # TODO may want to revise output from this fn based on projections
     syms = system.get_chemical_symbols()
@@ -100,6 +108,15 @@ def write_qe_input(prefix, file_dir, qe_input, calc_type):
     with open(file_path, 'w') as fp:
         fp.write(qe_input[calc_type])
 
+def get_work(prefix):
+    gconf = _global_config()
+    work_base = os.path.expandvars(gconf["work_base"])
+    work = os.path.join(work_base, prefix)
+    if not os.path.exists(work):
+        os.mkdir(work)
+
+    return work
+
 def _main():
     parser = argparse.ArgumentParser("Build and run Heusler bulk",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -177,10 +194,7 @@ def _main():
 
     num_wann, num_bands = get_num_bands(system, system_type, atoms, args.soc)
 
-    # SC10 path
-    band_path_syms = ["Gamma", "X", "W", "K", "Gamma", "L", "U", "W", "L", "K", "W", "U", "X"]
-    # Nevidomskyy path
-    #band_path_syms = ["W", "L", "Gamma", "X", "W"]
+    band_path_syms, band_path_labels = sc10_fcc_path_syms()
     SC10_kpts = {"Gamma": np.array([0.0, 0.0, 0.0]),
             "K": np.array([3/8, 3/8, 3/4]),
             "L": np.array([1/2, 1/2, 1/2]),
@@ -199,10 +213,7 @@ def _main():
     for calc_type in ["scf", "nscf", "bands"]:
         qe_input[calc_type] = build_qe(system, prefix, calc_type, qe_config)
 
-    work = os.path.join(_global_config()["work_base"], prefix)
-    if not os.path.exists(work):
-        os.mkdir(work)
-
+    work = get_work(prefix)
     wannier_dir = os.path.join(work, "wannier")
     if not os.path.exists(wannier_dir):
         os.mkdir(wannier_dir)

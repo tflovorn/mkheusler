@@ -7,7 +7,7 @@ from mkheusler.pwscf.build import build_pw2wan, build_bands, build_qe
 from mkheusler.wannier.build import Winfile
 from mkheusler.build.util import _base_dir, _global_config
 from mkheusler.build.bulk import (verify_SC10_fcc, get_num_bands, get_cutoff, get_pseudo_dir,
-        make_qe_config, write_qe_input)
+        make_qe_config, write_qe_input, get_work)
 
 def _main():
     parser = argparse.ArgumentParser("Build and run Heusler slab",
@@ -114,10 +114,7 @@ def _main():
     for calc_type in ["scf", "nscf", "bands"]:
         qe_input[calc_type] = build_qe(system_slab, prefix, calc_type, qe_config)
 
-    work = os.path.join(_global_config()["work_base"], prefix)
-    if not os.path.exists(work):
-        os.mkdir(work)
-
+    work = get_work(prefix)
     wannier_dir = os.path.join(work, "wannier")
     if not os.path.exists(wannier_dir):
         os.mkdir(wannier_dir)
