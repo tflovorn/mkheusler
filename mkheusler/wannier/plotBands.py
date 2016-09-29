@@ -107,7 +107,8 @@ def plotBands(evalsDFT, Hr, alat, latVecs, minE, maxE, outpath, show=False, symL
                 scale = 10.0
                 for val in plt_cs:
                     s_weights.append(scale*val)
-                plt.scatter(plt_xs, plt_ys, c=plt_cs, cmap='gnuplot', s=s_weights, facecolors="none")
+                plt.scatter(plt_xs, plt_ys, c=plt_cs, cmap='gnuplot', s=s_weights,
+                        edgecolors="none", facecolors="none")
             plt.colorbar()
 
             _set_fermi_energy_line(fermi_energy)
