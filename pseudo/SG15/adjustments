@@ -1,0 +1,6 @@
+Some changes may be required to use SG15 pseudopotentials with SOC turned on in ONCVPSP.
+In some cases ONCVPSP may not converge without changes, while in others ghosts states may appear.
+
+Ni 1.0: no adjustment
+Hf 1.1: no adjustment
+Sn 1.1: SG15 base with SOC turned on has ghost in D- at 0.5 Ha. D rc -= 0.1, qc += 0.1 is used to eliminate this ghost.

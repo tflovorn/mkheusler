@@ -73,13 +73,18 @@ def get_cutoff(ecutwfc_in, ecutrho_in):
 
     return ecutwfc, ecutrho
 
-def make_qe_config(system, latconst, soc, num_bands, ecutwfc, ecutrho, degauss, Nk, band_path):
+def get_pseudo_dir(soc, sg15_adjust):
     base = _base_dir()
     if soc:
-        pseudo_dir = os.path.join(base, "pseudo", "SG15", "soc")
+        pseudo_dir = os.path.join(base, "pseudo", "SG15", "adjusted_soc")
+    elif sg15_adjust:
+        pseudo_dir = os.path.join(base, "pseudo", "SG15", "adjusted_no_soc")
     else:
         pseudo_dir = os.path.join(base, "pseudo", "SG15", "base_no_soc")
 
+    return pseudo_dir
+
+def make_qe_config(system, latconst, soc, num_bands, ecutwfc, ecutrho, degauss, Nk, band_path, pseudo_dir):
     pseudo = get_pseudo(system.get_chemical_symbols())
     weight = get_weight(system)
     conv_thr = {"scf": 1e-8, "nscf": 1e-10, "bands": 1e-10}
@@ -118,6 +123,8 @@ def _main():
             help="Number of k-points to use in NSCF calculation (same in each direction)")
     parser.add_argument("--Nk_bands", type=int, default=20,
             help="Number of k-points to use for each panel in bands calculation")
+    parser.add_argument("--sg15_adjust", action="store_true",
+            help="If specified for non-SOC calculation, use SG15 PPs adjusted to work for SOC")
     args = parser.parse_args()
 
     # TODO intial magnetic moment specifiers?
@@ -134,6 +141,8 @@ def _main():
             prefix = "{}{}{}_bulk".format(atoms[0], atoms[1], atoms[2])
             if args.soc:
                 prefix = "{}_soc".format(prefix)
+            elif args.sg15_adjust:
+                prefix = "{}_adjust".format(prefix)
     elif len(atoms) == 4:
         system_type = "FH"
         wann_valence = {atoms[0]: "spd", atoms[2]: "spd", atoms[3]: "sp"}
@@ -142,6 +151,8 @@ def _main():
             prefix = "{}2{}{}_bulk".format(atoms[0], atoms[2], atoms[3])
             if args.soc:
                 prefix = "{}_soc".format(prefix)
+            elif args.sg15_adjust:
+                prefix = "{}_adjust".format(prefix)
     else:
         raise ValueError("must specify 3 or 4 atoms (half-Heusler or full-Heusler)")
 
@@ -178,9 +189,11 @@ def _main():
             "X": np.array([1/2, 0.0, 1/2])}
     band_path = [SC10_kpts[sym] for sym in band_path_syms]
 
+    pseudo_dir = get_pseudo_dir(args.soc, args.sg15_adjust)
+
     Nk = {"scf": args.Nk_scf, "nscf": args.Nk_nscf, "bands": args.Nk_bands}
     qe_config = make_qe_config(system, args.latconst, args.soc, num_bands, ecutwfc,
-            ecutrho, args.degauss, Nk, band_path)
+            ecutrho, args.degauss, Nk, band_path, pseudo_dir)
 
     qe_input = {}
     for calc_type in ["scf", "nscf", "bands"]:

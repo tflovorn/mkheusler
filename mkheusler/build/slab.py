@@ -6,10 +6,11 @@ from ase.build import surface
 from mkheusler.pwscf.build import build_pw2wan, build_bands, build_qe
 from mkheusler.wannier.build import Winfile
 from mkheusler.build.util import _base_dir, _global_config
-from mkheusler.build.bulk import verify_SC10_fcc, get_num_bands, get_cutoff, make_qe_config, write_qe_input
+from mkheusler.build.bulk import (verify_SC10_fcc, get_num_bands, get_cutoff, get_pseudo_dir,
+        make_qe_config, write_qe_input)
 
 def _main():
-    parser = argparse.ArgumentParser("Build and run Heusler bulk",
+    parser = argparse.ArgumentParser("Build and run Heusler slab",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("atoms", type=str,
             help="Comma-separated list of XYZ/X2YZ atoms (ex: 'Ni,Mn,Sb' or 'Co,Co,Mn,Si')")
@@ -33,6 +34,8 @@ def _main():
             help="Number of k-points to use in NSCF calculation (same in each direction along slab)")
     parser.add_argument("--Nk_bands", type=int, default=20,
             help="Number of k-points to use for each panel in bands calculation")
+    parser.add_argument("--sg15_adjust", action="store_true",
+            help="If specified for non-SOC calculation, use SG15 PPs adjusted to work for SOC")
     args = parser.parse_args()
 
     # TODO intial magnetic moment specifiers?
@@ -50,6 +53,8 @@ def _main():
             prefix = "{}{}{}_slab_{}".format(atoms[0], atoms[1], atoms[2], args.layers)
             if args.soc:
                 prefix = "{}_soc".format(prefix)
+            elif args.sg15_adjust:
+                prefix = "{}_adjust".format(prefix)
     elif len(atoms) == 4:
         system_type = "FH"
         wann_valence = {atoms[0]: "spd", atoms[2]: "spd", atoms[3]: "sp"}
@@ -58,6 +63,8 @@ def _main():
             prefix = "{}2{}{}_slab_{}".format(atoms[0], atoms[2], atoms[3], args.layers)
             if args.soc:
                 prefix = "{}_soc".format(prefix)
+            elif args.sg15_adjust:
+                prefix = "{}_adjust".format(prefix)
     else:
         raise ValueError("must specify 3 or 4 atoms (half-Heusler or full-Heusler)")
 
@@ -97,9 +104,11 @@ def _main():
             "X": np.array([1/2, 0.0, 1/2])}
     band_path = [SC10_kpts[sym] for sym in band_path_syms]
 
+    pseudo_dir = get_pseudo_dir(args.soc, args.sg15_adjust)
+
     Nk = {"scf": args.Nk_scf, "nscf": args.Nk_nscf, "bands": args.Nk_bands}
     qe_config = make_qe_config(system_slab, args.latconst, args.soc, num_bands, ecutwfc,
-            ecutrho, args.degauss, Nk, band_path)
+            ecutrho, args.degauss, Nk, band_path, pseudo_dir)
 
     qe_input = {}
     for calc_type in ["scf", "nscf", "bands"]:
