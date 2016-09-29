@@ -35,7 +35,7 @@ def get_num_bands(system, system_type, atoms, soc):
     if soc:
         num_wann *= 2
 
-    extra_bands_factor = 28/18
+    extra_bands_factor = 2.5
     num_bands = int(np.ceil(extra_bands_factor*num_wann))
     if num_bands % 2 == 1:
         num_bands += 1
