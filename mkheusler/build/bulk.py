@@ -166,7 +166,10 @@ def _main():
 
     num_wann, num_bands = get_num_bands(system, system_type, atoms, args.soc)
 
+    # SC10 path
     band_path_syms = ["Gamma", "X", "W", "K", "Gamma", "L", "U", "W", "L", "K", "W", "U", "X"]
+    # Nevidomskyy path
+    #band_path_syms = ["W", "L", "Gamma", "X", "W"]
     SC10_kpts = {"Gamma": np.array([0.0, 0.0, 0.0]),
             "K": np.array([3/8, 3/8, 3/4]),
             "L": np.array([1/2, 1/2, 1/2]),

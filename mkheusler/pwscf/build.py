@@ -146,7 +146,7 @@ def _atom_types(ase_system):
 
 def _electrons(conv_thr):
     nl = [" &electrons"]
-    nl.append("    startingwfc='random',")
+    nl.append("    startingwfc='atomic+random',")
     nl.append("    diagonalization='david',")
     nl.append("    conv_thr={}".format(str(conv_thr)))
     nl.append(" /")
