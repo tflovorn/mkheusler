@@ -31,8 +31,10 @@ def _main():
         band_path_syms, band_path_labels = sc10_fcc_path_syms()
     else:
         # slab calculation
-        # TODO - path labels
-        band_path_labels = None
+        if args.slab_dir == "111":
+            band_path_syms, band_path_labels = slab_fcc_111_path_syms()
+        else:
+            raise ValueError("unsupported slab_dir")
 
     work = get_work(args.prefix)
     wannier_dir = os.path.join(work, "wannier")

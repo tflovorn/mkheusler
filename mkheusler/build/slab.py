@@ -9,6 +9,15 @@ from mkheusler.build.util import _base_dir, _global_config
 from mkheusler.build.bulk import (verify_SC10_fcc, get_num_bands, get_cutoff, get_pseudo_dir,
         make_qe_config, write_qe_input, get_work)
 
+def slab_fcc_111_path_syms():
+    # Assumes SC10 fcc lattice and ASE [111] slab which has
+    # D = sqrt(2)a/2 [1 1/2
+    #                 0 sqrt(3)/2]
+    band_path_syms = ["Gamma", "M", "K", "Gamma"]
+    band_path_labels = ["$\\Gamma$", "$M$", "$K$", "$\\Gamma$"]
+
+    return band_path_syms, band_path_labels
+
 def _main():
     parser = argparse.ArgumentParser("Build and run Heusler slab",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -94,15 +103,15 @@ def _main():
 
     num_wann, num_bands = get_num_bands(system_slab, system_type, atoms, args.soc)
 
-    # TODO (111) surface
-    band_path_syms = ["Gamma", "X", "W", "K", "Gamma", "L", "U", "W", "L", "K", "W", "U", "X"]
-    SC10_kpts = {"Gamma": np.array([0.0, 0.0, 0.0]),
-            "K": np.array([3/8, 3/8, 3/4]),
-            "L": np.array([1/2, 1/2, 1/2]),
-            "U": np.array([5/8, 1/4, 5/8]),
-            "W": np.array([1/2, 1/4, 3/4]),
-            "X": np.array([1/2, 0.0, 1/2])}
-    band_path = [SC10_kpts[sym] for sym in band_path_syms]
+    # TODO consider surfaces other than 111
+    if surface_normal_cubic == (1, 1, 1):
+        band_path_syms, band_path_labels = slab_fcc_111_path_syms()
+        fcc_111_kpts = {"Gamma": np.array([0.0, 0.0, 0.0]),
+                "K": np.array([2/3, 2/3, 0.0]),
+                "M": np.array([1/2, 0.0, 0.0])}
+        band_path = [fcc_111_kpts[sym] for sym in band_path_syms]
+    else:
+        raise ValueError("unsupported surface direction (need band path)")
 
     pseudo_dir = get_pseudo_dir(args.soc, args.sg15_adjust)
 
