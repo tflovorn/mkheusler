@@ -125,17 +125,17 @@ def AtomPos(latpos):
     lines.append("")
     return lines
 
-def Kpoints(Nk):
-    lines = ["mp_grid = {} {} {}".format(Nk, Nk, Nk)]
+def Kpoints(Nk1, Nk2, Nk3):
+    lines = ["mp_grid = {} {} {}".format(Nk1, Nk2, Nk3)]
     lines.append("")
     lines.append("begin kpoints")
-    lines.extend(ks_strs(Nk))
+    lines.extend(ks_strs(Nk1, Nk2, Nk3))
     lines.append("end kpoints")
     lines.append("")
     return lines
 
-def ks_strs(Nk):
-    ks_lists = nscf_ks(Nk, Nk, Nk)
+def ks_strs(Nk1, Nk2, Nk3):
+    ks_lists = nscf_ks(Nk1, Nk2, Nk3)
     
     ret = []
     for ks in ks_lists:
@@ -160,8 +160,8 @@ def Winfile(ase_system, config, valence, num_wann):
     lines.extend(UnitCell(axes, latconst, abohr))
     lines.extend(AtomPos(latpos))
 
-    Nk = config["Nk"]["nscf"]
-    lines.extend(Kpoints(Nk))
+    Nk1, Nk2, Nk3 = config["Nk"]["nscf"]
+    lines.extend(Kpoints(Nk1, Nk2, Nk3))
 
     lines_str = "\n".join(lines) + "\n"
     return lines_str

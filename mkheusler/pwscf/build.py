@@ -174,16 +174,16 @@ def _atomic_positions(pos):
 
 def _k_points(calc_type, config):
     if calc_type == 'scf':
-        Nk = config["Nk"]["scf"]
+        Nk1, Nk2, Nk3 = config["Nk"]["scf"]
 
         card = ["K_POINTS automatic"]
-        card.append("{} {} {} 0 0 0".format(Nk, Nk, Nk))
+        card.append("{} {} {} 0 0 0".format(Nk1, Nk2, Nk3))
         return "\n".join(card)
     elif calc_type == 'nscf':
-        Nk = config["Nk"]["nscf"]
-        Nks = Nk**3
+        Nk1, Nk2, Nk3 = config["Nk"]["nscf"]
+        Nks = Nk1*Nk2*Nk3
         weight = 1.0/Nks
-        nscf_klist = nscf_ks(Nk, Nk, Nk)
+        nscf_klist = nscf_ks(Nk1, Nk2, Nk3)
 
         card = ["K_POINTS crystal"]
         card.append("{}".format(Nks))

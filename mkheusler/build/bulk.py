@@ -205,7 +205,7 @@ def _main():
 
     pseudo_dir = get_pseudo_dir(args.soc, args.sg15_adjust)
 
-    Nk = {"scf": args.Nk_scf, "nscf": args.Nk_nscf, "bands": args.Nk_bands}
+    Nk = {"scf": [args.Nk_scf]*3, "nscf": [args.Nk_nscf]*3, "bands": args.Nk_bands}
     qe_config = make_qe_config(system, args.latconst, args.soc, num_bands, ecutwfc,
             ecutrho, args.degauss, Nk, band_path, pseudo_dir)
 
