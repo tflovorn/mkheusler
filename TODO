@@ -1,0 +1,3 @@
+For slab, set electrons -> mixing_mode = 'local-TF' as suggested in PWSCF manual
+
+Use random instead of atomic+random or include more bands to try and avoid Cholesky errors for slab
