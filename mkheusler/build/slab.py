@@ -64,6 +64,8 @@ def _main():
                 prefix = "{}_soc".format(prefix)
             elif args.sg15_adjust:
                 prefix = "{}_adjust".format(prefix)
+        else:
+            prefix = args.prefix
     elif len(atoms) == 4:
         system_type = "FH"
         wann_valence = {atoms[0]: "spd", atoms[2]: "spd", atoms[3]: "sp"}
@@ -74,6 +76,8 @@ def _main():
                 prefix = "{}_soc".format(prefix)
             elif args.sg15_adjust:
                 prefix = "{}_adjust".format(prefix)
+        else:
+            prefix = args.prefix
     else:
         raise ValueError("must specify 3 or 4 atoms (half-Heusler or full-Heusler)")
 
