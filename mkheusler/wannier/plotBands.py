@@ -12,7 +12,7 @@ from mkheusler.pwscf.parseScf import alat_from_scf, latVecs_from_scf
 # Avoids problem of overlapping markers.
 eval_dot_size = True
 
-def plotBands(evalsDFT, Hr, alat, latVecs, minE, maxE, outpath, show=False, symList=None, fermi_energy=None, plot_evecs=False, plot_DFT_evals=True, comp_groups=None):
+def plotBands(evalsDFT, Hr, alat, latVecs, minE, maxE, outpath, show=False, symList=None, fermi_energy=None, plot_evecs=False, plot_DFT_evals=True, comp_groups=None, fermi_shift=False):
     '''Create a plot of the eigenvalues given by evalsDFT (which has the form
     returned by extractQEBands()). Additionally, plot the eigenvalues of the
     system described by the Wannier Hamiltonian Hr (which has the form
@@ -43,7 +43,10 @@ def plotBands(evalsDFT, Hr, alat, latVecs, minE, maxE, outpath, show=False, symL
                 DFT_ys.append([])
         # Add each of this k-point's eigenvalues to the corresponding list.
         for i, ev in enumerate(evs):
-            DFT_ys[i].append(ev)
+            if fermi_shift and fermi_energy is not None:
+                DFT_ys[i].append(ev - fermi_energy)
+            else:
+                DFT_ys[i].append(ev)
     # Construct list of k-points to evaluate Wannier Hamiltonian at by
     # interpolating between k-points in evalsDFT.
     Hr_ks, Hr_xs, Hr_ys, DFT_xs, Hr_evecs = None, None, None, None, None
@@ -53,9 +56,11 @@ def plotBands(evalsDFT, Hr, alat, latVecs, minE, maxE, outpath, show=False, symL
         Hr_ks = _interpolateKs(DFT_ks, Hr_ks_per_DFT_k)
         Hr_xs = range(len(Hr_ks))
         if not plot_evecs:
-            Hr_ys = _getHks(Hr, Hr_ks, alat, latVecs, plot_evecs=False)[0]
+            Hr_ys = _getHks(Hr, Hr_ks, alat, latVecs, plot_evecs=False,
+                    fermi_shift=fermi_shift, fermi_energy=fermi_energy)[0]
         else:
-            Hr_ys, Hr_evecs = _getHks(Hr, Hr_ks, alat, latVecs, plot_evecs)
+            Hr_ys, Hr_evecs = _getHks(Hr, Hr_ks, alat, latVecs, plot_evecs,
+                    fermi_shift=fermi_shift, fermi_energy=fermi_energy)
         DFT_xs = range(0, len(Hr_ks), Hr_ks_per_DFT_k)
     else:
         DFT_xs = range(0, len(DFT_ks))
@@ -63,7 +68,8 @@ def plotBands(evalsDFT, Hr, alat, latVecs, minE, maxE, outpath, show=False, symL
     Hr_ys_eval = None
     if plot_evecs and eval_dot_size:
         # Also need Hr_ys formatted for plot() in this case.
-        Hr_ys_eval = _getHks(Hr, Hr_ks, alat, latVecs, plot_evecs=False)[0]
+        Hr_ys_eval = _getHks(Hr, Hr_ks, alat, latVecs, plot_evecs=False,
+                fermi_shift=fermi_shift, fermi_energy=fermi_energy)[0]
 
     # Make plot.
     if not plot_evecs:
@@ -78,9 +84,9 @@ def plotBands(evalsDFT, Hr, alat, latVecs, minE, maxE, outpath, show=False, symL
                 else:
                     plt.plot(DFT_xs, DFT_evs, 'ko', markersize=2)
 
-        _set_fermi_energy_line(fermi_energy)
+        _set_fermi_energy_line(fermi_shift, fermi_energy)
         _set_sympoints_ticks(symList, DFT_ks, Hr, Hr_ks_per_DFT_k)
-        _set_plot_boundaries(DFT_xs, minE, maxE)
+        _set_plot_boundaries(DFT_xs, minE, maxE, fermi_shift, fermi_energy)
         _save_plot(show, outpath)
     else:
         # Eigenvectors are columns of each entry in Hr_evecs.
@@ -122,14 +128,16 @@ def plotBands(evalsDFT, Hr, alat, latVecs, minE, maxE, outpath, show=False, symL
                         edgecolors="none", facecolors="none")
             plt.colorbar()
 
-            _set_fermi_energy_line(fermi_energy)
+            _set_fermi_energy_line(fermi_shift, fermi_energy)
             _set_sympoints_ticks(symList, DFT_ks, Hr, Hr_ks_per_DFT_k)
-            _set_plot_boundaries(DFT_xs, minE, maxE)
+            _set_plot_boundaries(DFT_xs, minE, maxE, fermi_shift, fermi_energy)
             _save_plot(show, outpath + "_{}".format(str(comp_group_index)))
 
-def _set_fermi_energy_line(fermi_energy):
+def _set_fermi_energy_line(fermi_shift, fermi_energy):
     # Line to show Fermi energy.
-    if fermi_energy != None:
+    if fermi_shift and fermi_energy is not None:
+        plt.axhline(0.0, color='k')
+    elif fermi_energy is not None:
         plt.axhline(fermi_energy, color='k')
 
 def _set_sympoints_ticks(symList, DFT_ks, Hr, Hr_ks_per_DFT_k):
@@ -137,7 +145,7 @@ def _set_sympoints_ticks(symList, DFT_ks, Hr, Hr_ks_per_DFT_k):
     if symList is not None:
         nk_per_sym = (len(DFT_ks) - 1) / (len(symList) - 1)
         sym_xs = None
-        if Hr != None:
+        if Hr is not None:
             sym_xs = [i*nk_per_sym*Hr_ks_per_DFT_k for i in range(len(symList)+1)]
         else:
             sym_xs = [i*nk_per_sym for i in range(len(symList))]
@@ -145,11 +153,14 @@ def _set_sympoints_ticks(symList, DFT_ks, Hr, Hr_ks_per_DFT_k):
             plt.axvline(x, color='k')
         plt.xticks(sym_xs, symList)
 
-def _set_plot_boundaries(DFT_xs, minE, maxE):
+def _set_plot_boundaries(DFT_xs, minE, maxE, fermi_shift, fermi_energy):
     plt.xlim(0, DFT_xs[-1])
     plt.ylabel("$E$ [eV]")
-    if minE != None and maxE != None:
-        plt.ylim(minE, maxE)
+    if minE is not None and maxE is not None:
+        if fermi_shift and fermi_energy is not None:
+            plt.ylim(minE - fermi_energy, maxE - fermi_energy)
+        else:
+            plt.ylim(minE, maxE)
 
 def _save_plot(show, outpath):
     if show:
@@ -196,7 +207,7 @@ def _interpolateKs(klist, fineness):
     interpolated.append(klist[-1])
     return interpolated
 
-def _getHks(Hr, Hr_ks, alat, latVecs, plot_evecs=False):
+def _getHks(Hr, Hr_ks, alat, latVecs, plot_evecs=False, fermi_shift=False, fermi_energy=None):
     '''Iterate through Hr_ks and return a sequence of lists ranging
     over all k-points, where each list has one eigenvalue for every k-point.
 
@@ -222,10 +233,20 @@ def _getHks(Hr, Hr_ks, alat, latVecs, plot_evecs=False):
                     Hk_ys.append([])
             # Add each of this k-point's eigenvalues to the corresponding list.
             for i, ev in enumerate(evals):
-                Hk_ys[i].append(ev)
+                if fermi_shift and fermi_energy is not None:
+                    Hk_ys[i].append(ev - fermi_energy)
+                else:
+                    Hk_ys[i].append(ev)
         else:
             evals, evecs = linalg.eigh(this_Hk)
-            Hk_ys.append(evals)
+            if fermi_shift and fermi_energy is not None:
+                evals_shifted = []
+                for ev in evals:
+                    evals_shifted.append(ev - fermi_energy)
+                Hk_ys.append(evals_shifted)
+            else:
+                Hk_ys.append(evals)
+
             Hk_evecs.append(evecs)
 
     return Hk_ys, Hk_evecs

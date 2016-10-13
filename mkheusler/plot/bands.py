@@ -15,6 +15,8 @@ def _main():
             help="If slab, growth direction")
     parser.add_argument("--DFT_only", action='store_true',
             help="Use DFT bands only (no Wannier)")
+    parser.add_argument("--fermi_shift", action='store_true',
+            help="Shift plotted energies so that E_F = 0")
     parser.add_argument("--minE", type=float, default=None,
             help="Minimum energy to plot, relative to E_F")
     parser.add_argument("--maxE", type=float, default=None,
@@ -87,7 +89,7 @@ def _main():
 
     plotBands(qe_bands, Hr, alat, latVecs, minE_plot, maxE_plot, outpath, show=args.show,
             symList=band_path_labels, fermi_energy=E_F, plot_evecs=args.plot_evecs,
-            comp_groups=comp_groups)
+            comp_groups=comp_groups, fermi_shift=args.fermi_shift)
 
 if __name__ == "__main__":
     _main()
