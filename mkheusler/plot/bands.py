@@ -21,6 +21,12 @@ def _main():
             help="Maximum energy to plot, relative to E_F")
     parser.add_argument("--plot_evecs", action='store_true',
             help="Plot eigenvector decomposition")
+    parser.add_argument("--group_orbs_non_soc", action='store_true',
+            help="Make orbital groups for eigenvector decomp for non-SOC calculation")
+    parser.add_argument("--group_orbs_soc", action='store_true',
+            help="Make orbital groups for eigenvector decomp for SOC calculation")
+    parser.add_argument("--group_orbs_separate_orbitals", action='store_true',
+            help="Separate spd orbitals in grouping")
     parser.add_argument("--show", action='store_true',
             help="Show band plot instead of outputting file")
     args = parser.parse_args()
@@ -62,8 +68,26 @@ def _main():
     num_bands, num_ks, qe_bands = extractQEBands(bands_path)
     outpath = args.prefix
 
+    if args.group_orbs_non_soc:
+        if args.group_orbs_separate_orbitals:
+            comp_groups = [[0], list(range(1, 4)), list(range(4, 9)),
+                           [9], list(range(10, 13)), list(range(13, 18)),
+                           [18], list(range(19, 22))]
+        else:
+            comp_groups = [list(range(0, 9)), list(range(9, 18)), list(range(18, 22))]
+    elif args.group_orbs_soc:
+        if args.group_orbs_separate_orbitals:
+            comp_groups = [[0, 1], list(range(2, 8)), list(range(8, 18)),
+                           [18, 19], list(range(20, 26)), list(range(26, 36)),
+                           [36, 37], list(range(38, 44))]
+        else:
+            comp_groups = [list(range(0, 18)), list(range(18, 36)), list(range(36, 44))]
+    else:
+        comp_groups = None
+
     plotBands(qe_bands, Hr, alat, latVecs, minE_plot, maxE_plot, outpath, show=args.show,
-            symList=band_path_labels, fermi_energy=E_F, plot_evecs=args.plot_evecs)
+            symList=band_path_labels, fermi_energy=E_F, plot_evecs=args.plot_evecs,
+            comp_groups=comp_groups)
 
 if __name__ == "__main__":
     _main()

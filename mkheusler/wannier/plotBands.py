@@ -12,7 +12,7 @@ from mkheusler.pwscf.parseScf import alat_from_scf, latVecs_from_scf
 # Avoids problem of overlapping markers.
 eval_dot_size = True
 
-def plotBands(evalsDFT, Hr, alat, latVecs, minE, maxE, outpath, show=False, symList=None, fermi_energy=None, plot_evecs=False, plot_DFT_evals=True):
+def plotBands(evalsDFT, Hr, alat, latVecs, minE, maxE, outpath, show=False, symList=None, fermi_energy=None, plot_evecs=False, plot_DFT_evals=True, comp_groups=None):
     '''Create a plot of the eigenvalues given by evalsDFT (which has the form
     returned by extractQEBands()). Additionally, plot the eigenvalues of the
     system described by the Wannier Hamiltonian Hr (which has the form
@@ -87,15 +87,26 @@ def plotBands(evalsDFT, Hr, alat, latVecs, minE, maxE, outpath, show=False, symL
         # --> The number of eigenvector components = the number of rows.
         # Make plot with eigenvector weight = |eigenvector component|^2.
         evec_components = Hr_evecs[0].shape[0]
-        for comp in range(evec_components):
+        if comp_groups is None:
+            used_comp_groups = []
+            for comp in range(evec_components):
+                used_comp_groups.append([comp])
+        else:
+            used_comp_groups = comp_groups
+
+        for comp_group_index, comp_group in enumerate(used_comp_groups):
             plt_xs, plt_ys, plt_cs = [], [], []
             for x in Hr_xs:
                 ys = Hr_ys[x]
                 for eval_index, y in enumerate(ys):
-                    comp_val = abs(Hr_evecs[x][comp, eval_index])**2
+                    comp_group_total = 0.0
+                    for comp in comp_group:
+                        comp_val = abs(Hr_evecs[x][comp, eval_index])**2
+                        comp_group_total += comp_val
+
                     plt_xs.append(x)
                     plt_ys.append(y)
-                    plt_cs.append(comp_val)
+                    plt_cs.append(comp_group_total)
             # Plotting eigenvalues colored by eigenvector weight.
             if not eval_dot_size:
                 plt.scatter(plt_xs, plt_ys, c=plt_cs, cmap='gnuplot', s=5, edgecolors="none")
@@ -114,7 +125,7 @@ def plotBands(evalsDFT, Hr, alat, latVecs, minE, maxE, outpath, show=False, symL
             _set_fermi_energy_line(fermi_energy)
             _set_sympoints_ticks(symList, DFT_ks, Hr, Hr_ks_per_DFT_k)
             _set_plot_boundaries(DFT_xs, minE, maxE)
-            _save_plot(show, outpath + "_{}".format(str(comp)))
+            _save_plot(show, outpath + "_{}".format(str(comp_group_index)))
 
 def _set_fermi_energy_line(fermi_energy):
     # Line to show Fermi energy.
