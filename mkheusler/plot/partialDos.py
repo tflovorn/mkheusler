@@ -3,6 +3,7 @@ from argparse import ArgumentParser
 import subprocess
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 from mkheusler.pwscf.parseScf import fermi_from_scf, alat_from_scf, D_from_scf
 from mkheusler.plot.util import _base_dir, _global_config
 
@@ -111,16 +112,26 @@ def _extract_pnum_vals(numPath):
 
     return pnum_vals, E_vals, n_fermi, fermi_from_num
 
-def plot_pvals(pdos, Es, fermi, outpath, ylabel, minE=None, maxE=None):
+def plot_pvals(pdos, Es, fermi, outpath, ylabel, minE=None, maxE=None, group_labels=None):
     spin_polarized = len(pdos) > 1
     num_bands = len(pdos[0])
 
     plt.axvline(0.0, color='k')
 
+    cvals = np.linspace(0.0, 0.9, num_bands, endpoint=True)
+
     pdos_max = 0.0
     for band_index in range(num_bands):
         xs = [E - fermi for E in Es[0]]
-        plt.plot(xs, pdos[0][band_index], label="Band {}".format(str(band_index)))
+
+        if group_labels is not None:
+            label = group_labels[band_index]
+        else:
+            label = "Band {}".format(str(band_index))
+
+        color = cm.Accent(cvals[band_index], 1)
+
+        plt.plot(xs, pdos[0][band_index], label=label, c=color)
 
         for E, pdos_val in zip(Es[0], pdos[0][band_index]):
             E_shifted = E - fermi
@@ -136,7 +147,15 @@ def plot_pvals(pdos, Es, fermi, outpath, ylabel, minE=None, maxE=None):
                 neg_pdos[band_index].append(-val)
 
             xs = [E - fermi for E in Es[1]]
-            plt.plot(Es[1] - fermi, pdos[1][band_index], label="Band {}".format(str(band_index)))
+
+            if group_labels is not None:
+                label = group_labels[band_index]
+            else:
+                label = "Band {}".format(str(band_index))
+
+            color = cm.Accent(cvals[band_index], 1)
+
+            plt.plot(Es[1] - fermi, pdos[1][band_index], label=label, c=color)
     else:
         plt.ylim(0.0, pdos_max)
 
@@ -165,6 +184,8 @@ def _main():
             action='store_true')
     parser.add_argument('--groups', type=str, default=None,
             help="Partial DOS values to be added together (ex: '0,1,2;3,4,5' reports pdos 0+1+2 and 3+4+5)")
+    parser.add_argument('--group_labels', type=str, default=None,
+            help="Labels for groups specified by --groups")
     parser.add_argument('--minE', type=float, help="Minimum energy to plot.", default=None)
     parser.add_argument('--maxE', type=float, help="Maximum energy to plot.", default=None)
     parser.add_argument('--num_dos', type=int, default=3000,
@@ -254,17 +275,22 @@ def _main():
         group_pdos = pdos
         group_pnum = pnum
 
+    if args.group_labels is not None:
+        group_labels_split = args.group_labels.split(";")
+    else:
+        group_labels_split = None
+
     if args.num:
         # Echo n(E_Fermi)
         print("Got Fermi energy from n(E) = {}; scf Fermi energy = {}".format(str(fermi_from_num), str(fermi)))
         print("n(E) at the E_F from n(E) = {}".format(str(n_fermi)))
         # Make pnum plot.
         plot_pnum_outpath = outPath + "_pnum"
-        plot_pvals(group_pnum, Es, fermi_from_num, plot_pnum_outpath, "$n(E)$", args.minE, args.maxE)
+        plot_pvals(group_pnum, Es, fermi_from_num, plot_pnum_outpath, "$n(E)$", args.minE, args.maxE, group_labels_split)
 
     # Make PDOS plot.
     plot_pdos_outpath = outPath + "_pdos"
-    plot_pvals(group_pdos, Es, fermi, plot_pdos_outpath, "PDOS [eV$^{-1}$]", args.minE, args.maxE)
+    plot_pvals(group_pdos, Es, fermi, plot_pdos_outpath, "PDOS [eV$^{-1}$]", args.minE, args.maxE, group_labels_split)
 
 if __name__ == "__main__":
     _main()
