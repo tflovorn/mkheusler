@@ -1,4 +1,5 @@
 import argparse
+import json
 import numpy as np
 from numpy import linalg
 import matplotlib.pyplot as plt
@@ -89,6 +90,7 @@ def plotBands(evalsDFT, Hr, alat, latVecs, minE, maxE, outpath, show=False, symL
         else:
             sym_xs = [DFT_xs[DFT_sym_k_indices[i]] for i in range(len(symList))]
     else:
+        sym_k_indices = None
         sym_xs = None
         if Hr is not None:
             Hr_xs = range(len(Hr_ks))
@@ -113,6 +115,9 @@ def plotBands(evalsDFT, Hr, alat, latVecs, minE, maxE, outpath, show=False, symL
         _set_sympoints_ticks(symList, sym_xs)
         _set_plot_boundaries(DFT_xs, minE, maxE, fermi_shift, fermi_energy)
         _save_plot(show, outpath)
+
+        if Hr is not None:
+            _export_data(outpath, Hr_xs, sym_k_indices, symList, Hr_ys)
     else:
         # Eigenvectors are columns of each entry in Hr_evecs.
         # --> The number of eigenvector components = the number of rows.
@@ -270,6 +275,15 @@ def _scaled_k_xs(sym_indices, ks_cut, recip_dists):
             panel_number += 1
 
     return xs
+
+def _export_data(outpath, Hr_xs, sym_k_indices, symList, Hr_ys):
+    out = {}
+    out["scaled_k_pos"] = list(Hr_xs)
+    out["special_ks_values"] = [[i, label] for i, label in zip(sym_k_indices, symList)]
+    out["Ekm"] = [list(band) for band in Hr_ys]
+    export_path = "{}_bands_export.json".format(outpath)
+    with open(export_path, 'w') as fp:
+        json.dump(out, fp)
 
 def plotDFTBands(dft_bands_filepath, outpath, minE=None, maxE=None, show=False, spin=None):
     nb, nks, qe_bands = extractQEBands(dft_bands_filepath)
