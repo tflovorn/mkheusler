@@ -2,3 +2,5 @@ mkheusler.egg-info
 *.swp
 __pycache__
 *.png
+*pnum_data
+*export.json

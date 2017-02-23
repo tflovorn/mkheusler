@@ -1,4 +1,5 @@
 import os
+import json
 from argparse import ArgumentParser
 import subprocess
 import numpy as np
@@ -171,6 +172,17 @@ def plot_pvals(pdos, Es, fermi, outpath, ylabel, minE=None, maxE=None, group_lab
     plt.savefig(outpath + '.png', bbox_inches='tight', dpi=500)
     plt.clf()
 
+def export_pdos_data(prefix, Es_shifted, group_pdos, group_labels_split):
+    out = {}
+    out["E"] = Es_shifted
+    out["PDOS"] = {}
+    for pdos, label in zip(group_pdos, group_labels_split):
+        out["PDOS"][label] = pdos
+
+    fname = "{}_export.json".format(prefix)
+    with open(fname, 'w') as fp:
+        json.dump(out, fp)
+
 def _main():
     parser = ArgumentParser(description="Plot partial DOS from Wannier Hamiltonian.")
     parser.add_argument('prefix', type=str, help="Name of the system.")
@@ -291,6 +303,12 @@ def _main():
     # Make PDOS plot.
     plot_pdos_outpath = outPath + "_pdos"
     plot_pvals(group_pdos, Es, fermi, plot_pdos_outpath, "PDOS [eV$^{-1}$]", args.minE, args.maxE, group_labels_split)
+
+    # Export data to allow plotting with different styling.
+    # NOTE - only supports case with non-spin-polarized or noncollinear spin cases.
+    # TODO - support collinear spin-polarized case.
+    Es_shifted = [E - fermi for E in Es[0]]
+    export_pdos_data(outPath, Es_shifted, group_pdos[0], group_labels_split)
 
 if __name__ == "__main__":
     _main()
