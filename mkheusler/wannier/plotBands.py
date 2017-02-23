@@ -28,6 +28,8 @@ def plotBands(evalsDFT, Hr, alat, latVecs, minE, maxE, outpath, show=False, symL
     k-points used to plot the eigenvalues of Hr are linearly interpolated
     between the k-points listed in evalsDFT.
     '''
+    D = np.array(latVecs).T
+    R = 2*np.pi*np.linalg.inv(D)
     # Get list of all k-points in evalsDFT.
     # While we're iterating through evalsDFT, also construct eigenvalue
     # sequences for plotting. Instead of a list of eigenvalues for each
@@ -54,22 +56,45 @@ def plotBands(evalsDFT, Hr, alat, latVecs, minE, maxE, outpath, show=False, symL
     if Hr is not None:
         Hr_ks_per_DFT_k = 10
         Hr_ks = _interpolateKs(DFT_ks, Hr_ks_per_DFT_k)
-        Hr_xs = range(len(Hr_ks))
         if not plot_evecs:
             Hr_ys = _getHks(Hr, Hr_ks, alat, latVecs, plot_evecs=False,
                     fermi_shift=fermi_shift, fermi_energy=fermi_energy)[0]
         else:
             Hr_ys, Hr_evecs = _getHks(Hr, Hr_ks, alat, latVecs, plot_evecs,
                     fermi_shift=fermi_shift, fermi_energy=fermi_energy)
-        DFT_xs = range(0, len(Hr_ks), Hr_ks_per_DFT_k)
-    else:
-        DFT_xs = range(0, len(DFT_ks))
 
     Hr_ys_eval = None
     if plot_evecs and eval_dot_size:
         # Also need Hr_ys formatted for plot() in this case.
         Hr_ys_eval = _getHks(Hr, Hr_ks, alat, latVecs, plot_evecs=False,
                 fermi_shift=fermi_shift, fermi_energy=fermi_energy)[0]
+
+    # Scale k-point index values to size each panel according to the Cartesian
+    # distance between high-symmetry points.
+    if symList is not None:
+        nk_per_sym = (len(DFT_ks) - 1) // (len(symList) - 1)
+        DFT_sym_k_indices = [i*nk_per_sym for i in range(len(symList))]
+        # ks in DFT_ks and Hr_ks are in Cartesian basis in units of 2pi/alat.
+        # _recip_dist and _scaled_k_xs expect reciprocal lattice basis.
+        Rinv = np.linalg.inv(R)
+        DFT_ks_Recip = [np.dot(Rinv, (2*np.pi/alat)*np.array(k)) for k in DFT_ks]
+        DFT_recip_dists = _recip_dist(DFT_sym_k_indices, DFT_ks_Recip, R)
+        DFT_xs = _scaled_k_xs(DFT_sym_k_indices, DFT_ks_Recip, DFT_recip_dists)
+        if Hr is not None:
+            sym_k_indices = [i*nk_per_sym*Hr_ks_per_DFT_k for i in range(len(symList))]
+            Hr_ks_Recip = [np.dot(Rinv, (2*np.pi/alat)*np.array(k)) for k in Hr_ks]
+            recip_dists = _recip_dist(sym_k_indices, Hr_ks_Recip, R)
+            Hr_xs = _scaled_k_xs(sym_k_indices, Hr_ks_Recip, recip_dists)
+            sym_xs = [Hr_xs[sym_k_indices[i]] for i in range(len(symList))]
+        else:
+            sym_xs = [DFT_xs[DFT_sym_k_indices[i]] for i in range(len(symList))]
+    else:
+        sym_xs = None
+        if Hr is not None:
+            Hr_xs = range(len(Hr_ks))
+            DFT_xs = range(0, len(Hr_ks), Hr_ks_per_DFT_k)
+        else:
+            DFT_xs = range(0, len(DFT_ks))
 
     # Make plot.
     if not plot_evecs:
@@ -85,7 +110,7 @@ def plotBands(evalsDFT, Hr, alat, latVecs, minE, maxE, outpath, show=False, symL
                     plt.plot(DFT_xs, DFT_evs, 'ko', markersize=2)
 
         _set_fermi_energy_line(fermi_shift, fermi_energy)
-        _set_sympoints_ticks(symList, DFT_ks, Hr, Hr_ks_per_DFT_k)
+        _set_sympoints_ticks(symList, sym_xs)
         _set_plot_boundaries(DFT_xs, minE, maxE, fermi_shift, fermi_energy)
         _save_plot(show, outpath)
     else:
@@ -129,7 +154,7 @@ def plotBands(evalsDFT, Hr, alat, latVecs, minE, maxE, outpath, show=False, symL
             plt.colorbar()
 
             _set_fermi_energy_line(fermi_shift, fermi_energy)
-            _set_sympoints_ticks(symList, DFT_ks, Hr, Hr_ks_per_DFT_k)
+            _set_sympoints_ticks(symList, sym_xs)
             _set_plot_boundaries(DFT_xs, minE, maxE, fermi_shift, fermi_energy)
             _save_plot(show, outpath + "_{}".format(str(comp_group_index)))
 
@@ -140,15 +165,9 @@ def _set_fermi_energy_line(fermi_shift, fermi_energy):
     elif fermi_energy is not None:
         plt.axhline(fermi_energy, color='k')
 
-def _set_sympoints_ticks(symList, DFT_ks, Hr, Hr_ks_per_DFT_k):
+def _set_sympoints_ticks(symList, sym_xs):
     # Lines and labels for symmetry points.
     if symList is not None:
-        nk_per_sym = (len(DFT_ks) - 1) / (len(symList) - 1)
-        sym_xs = None
-        if Hr is not None:
-            sym_xs = [i*nk_per_sym*Hr_ks_per_DFT_k for i in range(len(symList)+1)]
-        else:
-            sym_xs = [i*nk_per_sym for i in range(len(symList))]
         for x in sym_xs:
             plt.axvline(x, color='k')
         plt.xticks(sym_xs, symList)
@@ -189,6 +208,68 @@ def _vec_equal_upto(u, v, eps):
         if abs(u[i] - v[i]) > eps:
             return False
     return True
+
+def _recip_dist(sym_indices, ks_cut, R):
+    '''Return a list of values which give the Cartesian distance between each
+    pair of consecutive symmetry points.
+    '''
+    dists = []
+    for point_index, k_index in enumerate(sym_indices):
+        # Skip first point (need to make [k, previous k] pairs).
+        if point_index == 0:
+            continue
+        # Get k and previous k (prev_k).
+        k = ks_cut[k_index]
+        prev_k_index = sym_indices[point_index-1]
+        prev_k = ks_cut[prev_k_index]
+        # Convert k and prev_k from reciprocal lattice coordinates to
+        # Cartesian coordinates.
+        # Note that k and prev_k here are row vectors (i.e. 1x3 'dual vectors',
+        # the transpose of 3x1 column 'vectors').
+        k_Cart = np.dot(k, R)
+        prev_k_Cart = np.dot(prev_k, R)
+        # Get vector from k to prev_k and its length.
+        k_to_prev_k = np.subtract(prev_k_Cart, k_Cart)
+        this_dist = np.linalg.norm(k_to_prev_k)
+        dists.append(this_dist)
+
+    return dists
+
+def _scaled_k_xs(sym_indices, ks_cut, recip_dists):
+    '''Return a list of x values at which each k value in ks_cut will be
+    plotted. The sizes of the panels between symmetry points are scaled
+    such that these sizes correspond to the Cartesian distance between the
+    k-points at the ends of the panel (relative to the sum of these distances
+    over all panels).
+    '''
+    total_dist = sum(recip_dists)
+    xs = []
+
+    current_x = 0.0
+    base_x = 0.0
+    panel_start_index = 0
+    panel_number = 0
+    for x_index in range(len(ks_cut)):
+        # At the last value in a panel, x_index - panel_start_index = points_in_panel - 1.
+        # Set step such that (points_in_panel - 1) * step = panel_x_length,
+        # i.e. such that the last value in a panel has an x value the appropriate distance
+        # away from the first value in that panel.
+        points_in_panel = sym_indices[panel_number+1] - sym_indices[panel_number] + 1
+        panel_x_length = recip_dists[panel_number] / total_dist
+        step = panel_x_length / (points_in_panel - 1)
+        current_x = base_x + (x_index - panel_start_index)*step
+        xs.append(current_x)
+
+        # When we reach the right side of a panel, we are at the left side of the next panel.
+        # In this situation, current_x = the left side of the next panel: make this the new base_x.
+        # Also set panel_start_index = x_index so that xs[panel_start_index] = the new base_x,
+        # and advance the count of which panel we are on.
+        if x_index in sym_indices and x_index != 0:
+            base_x = current_x
+            panel_start_index = x_index
+            panel_number += 1
+
+    return xs
 
 def plotDFTBands(dft_bands_filepath, outpath, minE=None, maxE=None, show=False, spin=None):
     nb, nks, qe_bands = extractQEBands(dft_bands_filepath)
