@@ -1,3 +1,4 @@
+from __future__ import division
 from argparse import ArgumentParser
 import os
 from mkheusler.pwscf.parseScf import fermi_from_scf

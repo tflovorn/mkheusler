@@ -1,3 +1,4 @@
+from __future__ import division
 import unittest
 import numpy as np
 from mkheusler.wannier.plotBands import _interpolateKs

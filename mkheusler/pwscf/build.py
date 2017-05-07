@@ -1,3 +1,4 @@
+from __future__ import division
 import os
 
 def build_pw2wan(prefix, soc):

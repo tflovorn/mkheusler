@@ -1,3 +1,5 @@
+from __future__ import division
+
 def atom_order_from_wout(wout_path):
     with open(wout_path, 'r') as fp:
         lines = fp.readlines()

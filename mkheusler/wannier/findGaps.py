@@ -1,3 +1,4 @@
+from __future__ import division
 from mkheusler.wannier.Dos import Dos
 
 def HrFindGaps(minE, maxE, num_dos, na, nb, nc, R, HrPath):

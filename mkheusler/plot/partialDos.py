@@ -1,3 +1,4 @@
+from __future__ import division
 import os
 import json
 from argparse import ArgumentParser

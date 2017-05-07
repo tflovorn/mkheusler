@@ -1,3 +1,4 @@
+from __future__ import division
 import os
 import subprocess
 from uuid import uuid4
