@@ -19,6 +19,81 @@ def slab_fcc_111_path_syms():
 
     return band_path_syms, band_path_labels
 
+def get_system_type(atoms):
+    if len(atoms) == 3:
+        system_type = "HH"
+    elif len(atoms) == 4:
+        system_type = "FH"
+    else:
+        raise ValueError("must specify 3 or 4 atoms (half-Heusler or full-Heusler)")
+
+    return system_type
+
+def get_surface_normal_fcc(surface_normal_cubic):
+    # TODO convert from cubic to fcc system (111 is the same)
+    if surface_normal_cubic == (1, 1, 1):
+        surface_normal_fcc = (1, 1, 1)
+    else:
+        raise ValueError("surface normal != (1, 1, 1) not implemented")
+
+    return surface_normal_fcc
+
+def get_band_path(surface_normal_cubic):
+    # TODO consider surfaces other than 111
+    if surface_normal_cubic == (1, 1, 1):
+        band_path_syms, band_path_labels = slab_fcc_111_path_syms()
+        fcc_111_kpts = {"Gamma": np.array([0.0, 0.0, 0.0]),
+                "K": np.array([2/3, 2/3, 0.0]),
+                "M": np.array([1/2, 0.0, 0.0])}
+        band_path = [fcc_111_kpts[sym] for sym in band_path_syms]
+    else:
+        raise ValueError("unsupported surface direction (need band path)")
+
+    return band_path, band_path_labels
+
+def make_surface_system(atoms, latconst, surface_normal_cubic, vacuum):
+    system_bulk = bulk(atoms, 'fcc', a=latconst)
+    verify_SC10_fcc(system_bulk, latconst)
+
+    system_type = get_system_type(atoms)
+
+    # SC10 = Setyawan and Curtarolo, Comp. Mater. Sci. 49, 299 (2010).
+    # SC10 FCC cell 111 = cubic conventional cell 111
+    # --> Scaled positions along body diagonal are same as in
+    # cubic conventional cell.
+    if system_type == "HH":
+        # Half-Heusler: Y-X-Z-void
+        system_bulk.set_scaled_positions([[1/4, 1/4, 1/4],
+                [0.0, 0.0, 0.0],
+                [1/2, 1/2, 1/2]])
+    elif system_type == "FH":
+        # Full-Heusler: Y-X-Z-X
+        system_bulk.set_scaled_positions([[1/4, 1/4, 1/4],
+            [3/4, 3/4, 3/4],
+            [0.0, 0.0, 0.0],
+            [1/2, 1/2, 1/2]])
+
+    surface_normal_fcc = get_surface_normal_fcc(surface_normal_cubic)
+
+    system_slab = surface(system_bulk, surface_normal_fcc, args.layers, vacuum)
+
+    return system_slab
+
+def make_prefix(atoms, soc):
+    # TODO include growth dir in prefix?
+    if len(atoms) == 3:
+        prefix = "{}{}{}_slab_{}".format(atoms[0], atoms[1], atoms[2], args.layers)
+        if args.soc:
+            prefix = "{}_soc".format(prefix)
+    elif len(atoms) == 4:
+        prefix = "{}2{}{}_slab_{}".format(atoms[0], atoms[2], atoms[3], args.layers)
+        if args.soc:
+            prefix = "{}_soc".format(prefix)
+    else:
+        raise ValueError("must specify 3 or 4 atoms (half-Heusler or full-Heusler)")
+
+    return prefix
+
 def _main():
     parser = argparse.ArgumentParser("Build and run Heusler slab",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -53,70 +128,28 @@ def _main():
     # NOTE - assuming no SOC = SG15 and SOC = SG15 plus SOC.
     ecutwfc, ecutrho = get_cutoff(args.ecutwfc, args.ecutrho)
 
-    # TODO include growth dir in prefix?
     atoms = args.atoms.split(',')
+
     if len(atoms) == 3:
-        system_type = "HH"
         wann_valence = {atoms[0]: "spd", atoms[1]: "spd", atoms[2]: "sp"}
-
-        if args.prefix is None:
-            prefix = "{}{}{}_slab_{}".format(atoms[0], atoms[1], atoms[2], args.layers)
-            if args.soc:
-                prefix = "{}_soc".format(prefix)
-            elif args.sg15_adjust:
-                prefix = "{}_adjust".format(prefix)
-        else:
-            prefix = args.prefix
     elif len(atoms) == 4:
-        system_type = "FH"
         wann_valence = {atoms[0]: "spd", atoms[2]: "spd", atoms[3]: "sp"}
-
-        if args.prefix is None:
-            prefix = "{}2{}{}_slab_{}".format(atoms[0], atoms[2], atoms[3], args.layers)
-            if args.soc:
-                prefix = "{}_soc".format(prefix)
-            elif args.sg15_adjust:
-                prefix = "{}_adjust".format(prefix)
-        else:
-            prefix = args.prefix
     else:
         raise ValueError("must specify 3 or 4 atoms (half-Heusler or full-Heusler)")
 
-    system_bulk = bulk(atoms, 'fcc', a=args.latconst)
-    verify_SC10_fcc(system_bulk, args.latconst)
+    prefix = make_prefix(atoms, args.soc)
+    if args.sg15_adjust:
+        prefix = "{}_adjust".format(prefix)
 
-    # SC10 = Setyawan and Curtarolo, Comp. Mater. Sci. 49, 299 (2010).
-    # SC10 FCC cell 111 = cubic conventional cell 111
-    # --> Scaled positions along body diagonal are same as in
-    # cubic conventional cell.
-    if system_type == "HH":
-        # Half-Heusler: Y-X-Z-void
-        system_bulk.set_scaled_positions([[1/4, 1/4, 1/4],
-                [0.0, 0.0, 0.0],
-                [1/2, 1/2, 1/2]])
-    elif system_type == "FH":
-        # Full-Heusler: Y-X-Z-X
-        system_bulk.set_scaled_positions([[1/4, 1/4, 1/4],
-            [3/4, 3/4, 3/4],
-            [0.0, 0.0, 0.0],
-            [1/2, 1/2, 1/2]])
-
-    surface_normal_cubic = (1, 1, 1)
-    surface_normal_fcc = (1, 1, 1) # TODO convert from cubic to fcc system (111 is the same)
     vacuum = 20 # Angstrom
-    system_slab = surface(system_bulk, surface_normal_fcc, args.layers, vacuum)
+    surface_normal_cubic = (1, 1, 1)
 
+    system_slab = make_surface_system(atoms, args.latconst, surface_normal_cubic, vacuum)
+
+    system_type = get_system_type(atoms)
     num_wann, num_bands = get_num_bands(system_slab, system_type, atoms, args.soc)
 
-    # TODO consider surfaces other than 111
-    if surface_normal_cubic == (1, 1, 1):
-        band_path_syms, band_path_labels = slab_fcc_111_path_syms()
-        fcc_111_kpts = {"Gamma": np.array([0.0, 0.0, 0.0]),
-                "K": np.array([2/3, 2/3, 0.0]),
-                "M": np.array([1/2, 0.0, 0.0])}
-        band_path = [fcc_111_kpts[sym] for sym in band_path_syms]
-    else:
-        raise ValueError("unsupported surface direction (need band path)")
+    band_path, band_path_labels = get_band_path(surface_normal_cubic)
 
     pseudo_dir = get_pseudo_dir(args.soc, args.sg15_adjust)
 
