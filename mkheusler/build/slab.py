@@ -51,7 +51,7 @@ def get_band_path(surface_normal_cubic):
 
     return band_path, band_path_labels
 
-def make_surface_system(atoms, latconst, surface_normal_cubic, vacuum):
+def make_surface_system(atoms, latconst, layers, surface_normal_cubic, vacuum):
     system_bulk = bulk(atoms, 'fcc', a=latconst)
     verify_SC10_fcc(system_bulk, latconst)
 
@@ -75,19 +75,19 @@ def make_surface_system(atoms, latconst, surface_normal_cubic, vacuum):
 
     surface_normal_fcc = get_surface_normal_fcc(surface_normal_cubic)
 
-    system_slab = surface(system_bulk, surface_normal_fcc, args.layers, vacuum)
+    system_slab = surface(system_bulk, surface_normal_fcc, layers, vacuum)
 
     return system_slab
 
-def make_prefix(atoms, soc):
+def make_prefix(atoms, layers, soc):
     # TODO include growth dir in prefix?
     if len(atoms) == 3:
-        prefix = "{}{}{}_slab_{}".format(atoms[0], atoms[1], atoms[2], args.layers)
-        if args.soc:
+        prefix = "{}{}{}_slab_{}".format(atoms[0], atoms[1], atoms[2], layers)
+        if soc:
             prefix = "{}_soc".format(prefix)
     elif len(atoms) == 4:
-        prefix = "{}2{}{}_slab_{}".format(atoms[0], atoms[2], atoms[3], args.layers)
-        if args.soc:
+        prefix = "{}2{}{}_slab_{}".format(atoms[0], atoms[2], atoms[3], layers)
+        if soc:
             prefix = "{}_soc".format(prefix)
     else:
         raise ValueError("must specify 3 or 4 atoms (half-Heusler or full-Heusler)")
@@ -137,14 +137,14 @@ def _main():
     else:
         raise ValueError("must specify 3 or 4 atoms (half-Heusler or full-Heusler)")
 
-    prefix = make_prefix(atoms, args.soc)
+    prefix = make_prefix(atoms, args.layers, args.soc)
     if args.sg15_adjust:
         prefix = "{}_adjust".format(prefix)
 
     vacuum = 20 # Angstrom
     surface_normal_cubic = (1, 1, 1)
 
-    system_slab = make_surface_system(atoms, args.latconst, surface_normal_cubic, vacuum)
+    system_slab = make_surface_system(atoms, args.latconst, args.layers, surface_normal_cubic, vacuum)
 
     system_type = get_system_type(atoms)
     num_wann, num_bands = get_num_bands(system_slab, system_type, atoms, args.soc)
