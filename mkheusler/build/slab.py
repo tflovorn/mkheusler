@@ -2,8 +2,7 @@ from __future__ import division
 import argparse
 import os
 import numpy as np
-from ase.lattice import bulk
-from ase.build import surface
+from ase import Atoms
 from mkheusler.pwscf.build import build_pw2wan, build_bands, build_qe
 from mkheusler.wannier.build import Winfile
 from mkheusler.build.util import _base_dir, _global_config
@@ -29,15 +28,6 @@ def get_system_type(atoms):
 
     return system_type
 
-def get_surface_normal_fcc(surface_normal_cubic):
-    # TODO convert from cubic to fcc system (111 is the same)
-    if surface_normal_cubic == (1, 1, 1):
-        surface_normal_fcc = (1, 1, 1)
-    else:
-        raise ValueError("surface normal != (1, 1, 1) not implemented")
-
-    return surface_normal_fcc
-
 def get_band_path(surface_normal_cubic):
     # TODO consider surfaces other than 111
     if surface_normal_cubic == (1, 1, 1):
@@ -52,30 +42,44 @@ def get_band_path(surface_normal_cubic):
     return band_path, band_path_labels
 
 def make_surface_system(atoms, latconst, layers, surface_normal_cubic, vacuum):
-    system_bulk = bulk(atoms, 'fcc', a=latconst)
-    verify_SC10_fcc(system_bulk, latconst)
-
     system_type = get_system_type(atoms)
 
-    # SC10 = Setyawan and Curtarolo, Comp. Mater. Sci. 49, 299 (2010).
-    # SC10 FCC cell 111 = cubic conventional cell 111
-    # --> Scaled positions along body diagonal are same as in
-    # cubic conventional cell.
+    a1 = (latconst/2) * np.array([1.0, -1.0, 0.0])
+    a2 = (latconst/2) * np.array([-1.0, 0.0, 1.0])
+    a3_base = latconst * np.array([1.0, 1.0, 1.0])
+
+    planar_pos = {'A': np.array([0.0, 0.0, 0.0]),
+            'B': (2/3)*a1 + (1/3)*a2,
+            'C': (1/3)*a1 + (2/3)*a2}
+    a3_ABC_pos = {'A': 0.0, 'B': 1/3, 'C': 2/3}
+
     if system_type == "HH":
         # Half-Heusler: Y-X-Z-void
-        system_bulk.set_scaled_positions([[1/4, 1/4, 1/4],
-                [0.0, 0.0, 0.0],
-                [1/2, 1/2, 1/2]])
+        a3_displacements = [1/4, 0.0, 1/2]
     elif system_type == "FH":
         # Full-Heusler: Y-X-Z-X
-        system_bulk.set_scaled_positions([[1/4, 1/4, 1/4],
-            [3/4, 3/4, 3/4],
-            [0.0, 0.0, 0.0],
-            [1/2, 1/2, 1/2]])
+        a3_displacements = [1/4, 3/4, 0.0, 1/2]
+    else:
+        raise ValueError("unsupported system_type")
 
-    surface_normal_fcc = get_surface_normal_fcc(surface_normal_cubic)
+    slab_atoms = []
+    slab_cart_pos = []
+    a3_vals = []
+    for layer_index in range(layers):
+        for at, at_a3_val in zip(atoms, a3_displacements):
+            slab_atoms.extend([at, at, at])
+            for tri_base in ['A', 'B', 'C']:
+                a3_val_in_layer = (at_a3_val + a3_ABC_pos[tri_base]) % 1
+                a3_val = a3_val_in_layer + layer_index
+                a3_vals.append(a3_val)
+                slab_cart_pos.append(planar_pos[tri_base] + a3_val * a3_base)
 
-    system_slab = surface(system_bulk, surface_normal_fcc, layers, vacuum)
+    top_a3 = max(a3_vals)
+    a3_length = top_a3 * np.linalg.norm(a3_base) + vacuum
+    a3 = (a3_length / np.linalg.norm(a3_base)) * a3_base
+
+    system_slab = Atoms(slab_atoms, slab_cart_pos, cell=[a1, a2, a3],
+            pbc=[True, True, True])
 
     return system_slab
 
