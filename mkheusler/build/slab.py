@@ -41,7 +41,51 @@ def get_band_path(surface_normal_cubic):
 
     return band_path, band_path_labels
 
-def make_surface_system(atoms, latconst, layers, surface_normal_cubic, vacuum):
+def _get_cutoffs(surface_termination, layers):
+    if surface_termination == '1':
+        top_cutoff = 0.0
+        bottom_cutoff = (4 * (layers - 1) + 2) / 4
+        new_layers = layers
+    elif surface_termination == '2':
+        top_cutoff = 1/4
+        bottom_cutoff = (4 * (layers - 1) + 2 + 1/3) / 4
+        new_layers = layers + 1
+    elif surface_termination == '3':
+        top_cutoff = (2/3) / 4
+        bottom_cutoff = (4 * (layers - 1) + 1 + 1/3) / 4
+        new_layers = layers
+    else:
+        raise ValueError("unrecognized surface termination")
+
+    return top_cutoff, bottom_cutoff, new_layers
+
+def _outside_cutoff(top_cutoff, bottom_cutoff, a3_val):
+    eps = 1e-9
+    above = top_cutoff - a3_val > eps
+    below = a3_val - bottom_cutoff > eps
+
+    return above or below
+
+def make_surface_system(atoms, latconst, layers, surface_normal_cubic, vacuum, surface_termination):
+    '''Create an ASE atoms object representing a half-Heusler or full-Heusler slab.
+
+    `atoms` is a length-3 (half-Heusler) or 4 (full-Heusler) list of atomic symbols in XXYZ order
+    (note: atoms along the body diagonal appear in YXZX order).
+    `latconst` is the cubic lattice constant in Angstrom.
+    `layers` is the number of 3- or 4-atom layer groups for atoms in the A positions,
+    before `top_cut` and `bottom_cut` are applied.
+    `surface_normal_cubic` specifies the normal vector to the surface.
+        TODO: use this. For now, the value given is ignored and [111] is assumed.
+    `vacuum`: amount of vacuum to apply between slabs.
+    `surface_termination`: for [111], valid values are: '1', '2', '3'.
+        These specify the size of the nearest-neighbor atom groups at the surfaces
+        in the half-Heusler structure.
+        Here A, B, C are the three configurations of the triangular lattice generated
+        by moving along the body diagonal in the fcc structure.
+        '1': A Y ~ C Z - A X - B Y (top, moving down) / A Z ~ B Y - A X - C Z (bottom, moving up).
+        '2': A X - B Y ~ A Z - B X / B X - A Z ~ B Y - A X
+        '3': C Z - A X - B Y ~ A Z / B Y - A X - C Z ~ A Y
+    '''
     system_type = get_system_type(atoms)
 
     a1 = (latconst/2) * np.array([1.0, -1.0, 0.0])
@@ -62,15 +106,21 @@ def make_surface_system(atoms, latconst, layers, surface_normal_cubic, vacuum):
     else:
         raise ValueError("unsupported system_type")
 
+    top_cutoff, bottom_cutoff, layers = _get_cutoffs(surface_termination, layers)
+
     slab_atoms = []
     slab_cart_pos = []
     a3_vals = []
     for layer_index in range(layers):
         for at, at_a3_val in zip(atoms, a3_displacements):
-            slab_atoms.extend([at, at, at])
             for tri_base in ['A', 'B', 'C']:
                 a3_val_in_layer = (at_a3_val + a3_ABC_pos[tri_base]) % 1
                 a3_val = a3_val_in_layer + layer_index
+
+                if _outside_cutoff(top_cutoff, bottom_cutoff, a3_val):
+                    continue
+
+                slab_atoms.append(at)
                 a3_vals.append(a3_val)
                 slab_cart_pos.append(planar_pos[tri_base] + a3_val * a3_base)
 
@@ -107,6 +157,8 @@ def _main():
             help="Lattice constant in Ang (conventional cell cubic edge)")
     parser.add_argument("layers", type=int,
             help="Number of layers in the slab")
+    parser.add_argument("--surface_termination", type=str, default='1',
+            help="Type of surface termination (described in make_surface_system)")
     parser.add_argument("--prefix", type=str, default=None,
             help="System name (obtained from atoms if not specified)")
     parser.add_argument("--soc", action="store_true",
@@ -125,6 +177,7 @@ def _main():
             help="Number of k-points to use for each panel in bands calculation")
     parser.add_argument("--sg15_adjust", action="store_true",
             help="If specified for non-SOC calculation, use SG15 PPs adjusted to work for SOC")
+
     args = parser.parse_args()
 
     # TODO intial magnetic moment specifiers?
@@ -141,14 +194,17 @@ def _main():
     else:
         raise ValueError("must specify 3 or 4 atoms (half-Heusler or full-Heusler)")
 
-    prefix = make_prefix(atoms, args.layers, args.soc)
-    if args.sg15_adjust:
-        prefix = "{}_adjust".format(prefix)
+    if args.prefix is None:
+        prefix = make_prefix(atoms, args.layers, args.soc)
+        if args.sg15_adjust:
+            prefix = "{}_adjust".format(prefix)
+    else:
+        prefix = args.prefix
 
     vacuum = 20 # Angstrom
     surface_normal_cubic = (1, 1, 1)
 
-    system_slab = make_surface_system(atoms, args.latconst, args.layers, surface_normal_cubic, vacuum)
+    system_slab = make_surface_system(atoms, args.latconst, args.layers, surface_normal_cubic, vacuum, args.surface_termination)
 
     system_type = get_system_type(atoms)
     num_wann, num_bands = get_num_bands(system_slab, system_type, atoms, args.soc)
