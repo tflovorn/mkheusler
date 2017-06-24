@@ -133,14 +133,14 @@ def make_surface_system(atoms, latconst, layers, surface_normal_cubic, vacuum, s
 
     return system_slab
 
-def make_prefix(atoms, layers, soc):
+def make_prefix(atoms, layers, soc, surface_termination):
     # TODO include growth dir in prefix?
     if len(atoms) == 3:
-        prefix = "{}{}{}_slab_{}".format(atoms[0], atoms[1], atoms[2], layers)
+        prefix = "{}{}{}_slab_{}_surf_{}".format(atoms[0], atoms[1], atoms[2], layers, surface_termination)
         if soc:
             prefix = "{}_soc".format(prefix)
     elif len(atoms) == 4:
-        prefix = "{}2{}{}_slab_{}".format(atoms[0], atoms[2], atoms[3], layers)
+        prefix = "{}2{}{}_slab_{}_surf_{}".format(atoms[0], atoms[2], atoms[3], layers, surface_termination)
         if soc:
             prefix = "{}_soc".format(prefix)
     else:
@@ -195,7 +195,7 @@ def _main():
         raise ValueError("must specify 3 or 4 atoms (half-Heusler or full-Heusler)")
 
     if args.prefix is None:
-        prefix = make_prefix(atoms, args.layers, args.soc)
+        prefix = make_prefix(atoms, args.layers, args.soc, args.surface_termination)
         if args.sg15_adjust:
             prefix = "{}_adjust".format(prefix)
     else:
