@@ -7,7 +7,7 @@ from mkheusler.pwscf.build import build_pw2wan, build_bands, build_qe
 from mkheusler.wannier.build import Winfile
 from mkheusler.build.util import _base_dir, _global_config
 from mkheusler.build.bulk import (verify_SC10_fcc, get_num_bands, get_cutoff, get_pseudo_dir,
-        make_qe_config, write_qe_input, get_work, _write_queuefiles)
+        make_qe_config, write_qe_input, get_work, _write_queuefiles, _machine_settings)
 
 def slab_fcc_111_path_syms():
     # Assumes SC10 fcc lattice and ASE [111] slab which has
@@ -253,17 +253,11 @@ def _main():
     with open(win_path, 'w') as fp:
         fp.write(wannier_input)
 
-    num_nodes = 1
-    mpi_tasks_per_node = 68 # Stampede2 KNL
-    total_mpi_tasks = num_nodes * mpi_tasks_per_node
-    openmp_threads_per_mpi_task = 1
+    machine = "ls5"
+    (num_nodes, mpi_tasks_per_node, total_mpi_tasks, openmp_threads_per_mpi_task,
+            total_pools) = _machine_settings(machine)
 
-    # QE pools = number of k-points run in parallel.
-    # Must have total_mpi_tasks divisible by total_pools.
-    pools_per_node = 17
-    total_pools = num_nodes * pools_per_node
-
-    queue_config = {"machine": "stampede2", "queue": "normal", "max_jobs": 1,
+    queue_config = {"machine": machine, "queue": "normal", "max_jobs": 1,
             "nodes": num_nodes, "mpi_tasks": total_mpi_tasks,
             "openmp_threads_per_mpi_task": openmp_threads_per_mpi_task,
             "qe_pools": total_pools,
