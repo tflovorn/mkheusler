@@ -95,12 +95,12 @@ def get_pseudo_dir(soc, sg15_adjust):
 
     return pseudo_dir
 
-def make_qe_config(system, latconst, soc, num_bands, ecutwfc, ecutrho, degauss, Nk, band_path, pseudo_dir):
+def make_qe_config(system, latconst, soc, magnetic, num_bands, ecutwfc, ecutrho, degauss, Nk, band_path, pseudo_dir):
     pseudo = get_pseudo(system.get_chemical_symbols())
     weight = get_weight(system)
     conv_thr = {"scf": 1e-8, "nscf": 1e-10, "bands": 1e-10}
 
-    qe_config = {"pseudo_dir": pseudo_dir, "pseudo": pseudo, "soc": soc, "latconst": latconst, 
+    qe_config = {"pseudo_dir": pseudo_dir, "pseudo": pseudo, "soc": soc, "magnetic": magnetic, "latconst": latconst, 
             "num_bands": num_bands, "weight": weight, "ecutwfc": ecutwfc, "ecutrho": ecutrho,
             "degauss": degauss, "conv_thr": conv_thr, "Nk": Nk, "band_path": band_path}
 
@@ -148,6 +148,8 @@ def _main():
             help="System name (obtained from atoms if not specified)")
     parser.add_argument("--soc", action="store_true",
             help="Use spin-orbit coupling")
+    parser.add_argument("--magnetic", action="store_true",
+            help="Start in magnetized state")
     parser.add_argument("--ecutwfc", type=float, default=None,
             help="Wavefunction plane-wave cutoff energy (Ry)")
     parser.add_argument("--ecutrho", type=float, default=None,
@@ -230,8 +232,8 @@ def _main():
     pseudo_dir = get_pseudo_dir(args.soc, args.sg15_adjust)
 
     Nk = {"scf": [args.Nk_scf]*3, "nscf": [args.Nk_nscf]*3, "bands": args.Nk_bands}
-    qe_config = make_qe_config(system, args.latconst, args.soc, num_bands, ecutwfc,
-            ecutrho, args.degauss, Nk, band_path, pseudo_dir)
+    qe_config = make_qe_config(system, args.latconst, args.soc, args.magnetic,
+            num_bands, ecutwfc, ecutrho, args.degauss, Nk, band_path, pseudo_dir)
 
     qe_input = {}
     for calc_type in ["scf", "nscf", "bands"]:

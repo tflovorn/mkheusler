@@ -7,7 +7,7 @@ from mkheusler.pwscf.build import build_pw2wan, build_bands, build_qe
 from mkheusler.wannier.build import Winfile
 from mkheusler.build.util import _base_dir, _global_config
 from mkheusler.build.bulk import (verify_SC10_fcc, get_num_bands, get_cutoff, get_pseudo_dir,
-        make_qe_config, write_qe_input, get_work)
+        make_qe_config, write_qe_input, get_work, _write_queuefiles)
 
 def slab_fcc_111_path_syms():
     # Assumes SC10 fcc lattice and ASE [111] slab which has
@@ -163,6 +163,8 @@ def _main():
             help="System name (obtained from atoms if not specified)")
     parser.add_argument("--soc", action="store_true",
             help="Use spin-orbit coupling")
+    parser.add_argument("--magnetic", action="store_true",
+            help="Start in magnetized state")
     parser.add_argument("--ecutwfc", type=float, default=None,
             help="Wavefunction plane-wave cutoff energy (Ry)")
     parser.add_argument("--ecutrho", type=float, default=None,
@@ -216,7 +218,7 @@ def _main():
     Nk = {"scf": [args.Nk_scf, args.Nk_scf, 1],
             "nscf": [args.Nk_nscf, args.Nk_nscf, 1],
             "bands": args.Nk_bands}
-    qe_config = make_qe_config(system_slab, args.latconst, args.soc, num_bands, ecutwfc,
+    qe_config = make_qe_config(system_slab, args.latconst, args.soc, args.magnetic, num_bands, ecutwfc,
             ecutrho, args.degauss, Nk, band_path, pseudo_dir)
 
     qe_input = {}
@@ -250,6 +252,27 @@ def _main():
     win_path = os.path.join(wannier_dir, "{}.win".format(prefix))
     with open(win_path, 'w') as fp:
         fp.write(wannier_input)
+
+    num_nodes = 1
+    mpi_tasks_per_node = 68 # Stampede2 KNL
+    total_mpi_tasks = num_nodes * mpi_tasks_per_node
+    openmp_threads_per_mpi_task = 1
+
+    # QE pools = number of k-points run in parallel.
+    # Must have total_mpi_tasks divisible by total_pools.
+    pools_per_node = 17
+    total_pools = num_nodes * pools_per_node
+
+    queue_config = {"machine": "stampede2", "queue": "normal", "max_jobs": 1,
+            "nodes": num_nodes, "mpi_tasks": total_mpi_tasks,
+            "openmp_threads_per_mpi_task": openmp_threads_per_mpi_task,
+            "qe_pools": total_pools,
+            "hours": 24, "minutes": 0, "wannier": False, "project": "A-ph911",
+            "prefix": prefix, "base_path": get_work(),
+            "outer_min": -12.0, "outer_max": 16.0,
+            "inner_min": -12.0, "inner_max": 14.0}
+
+    _write_queuefiles(work, prefix, queue_config, mpi_tasks_per_node)
 
 if __name__ == "__main__":
     _main()
