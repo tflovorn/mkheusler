@@ -28,7 +28,8 @@ def build_bands(prefix):
     bands = [" &bands"]
     bands.append("   prefix='{}',".format(prefix))
     bands.append("   outdir='./',")
-    bands.append("   filband='{}_bands.dat'".format(prefix))
+    bands.append("   filband='{}_bands.dat',".format(prefix))
+    bands.append("   lsym=.false.")
     bands.append(" /\n")
 
     return "\n".join(bands)
