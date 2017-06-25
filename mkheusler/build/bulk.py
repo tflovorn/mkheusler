@@ -1,10 +1,12 @@
 from __future__ import division
 import argparse
 import os
+from copy import deepcopy
 import numpy as np
 from ase.lattice import bulk
 from mkheusler.pwscf.build import build_pw2wan, build_bands, build_qe
 from mkheusler.wannier.build import Winfile
+from mkheusler.queue.queuefile import write_queuefile
 from mkheusler.build.util import _base_dir, _global_config
 
 def verify_SC10_fcc(system, a):
@@ -109,14 +111,31 @@ def write_qe_input(prefix, file_dir, qe_input, calc_type):
     with open(file_path, 'w') as fp:
         fp.write(qe_input[calc_type])
 
-def get_work(prefix):
+def get_work(prefix=None):
     gconf = _global_config()
-    work_base = os.path.expandvars(gconf["work_base"])
-    work = os.path.join(work_base, prefix)
+    work = os.path.expandvars(gconf["work_base"])
+    if prefix is not None:
+        work = os.path.join(work, prefix)
+
     if not os.path.exists(work):
         os.mkdir(work)
 
     return work
+
+def _write_queuefiles(work, prefix, config, mpi_tasks_per_node):
+    wan_setup_config = deepcopy(config)
+    wan_setup_config["calc"] = "wan_setup"
+    write_queuefile(wan_setup_config)
+
+    pw_post_config = deepcopy(config)
+    pw_post_config["calc"] = "pw_post"
+    pw_post_config["nodes"] = 1
+    pw_post_config["mpi_tasks"] = mpi_tasks_per_node // config["openmp_threads_per_mpi_task"]
+    write_queuefile(pw_post_config)
+
+    wan_run_config = deepcopy(pw_post_config)
+    wan_run_config["calc"] = "wan_run"
+    write_queuefile(wan_run_config)
 
 def _main():
     parser = argparse.ArgumentParser("Build and run Heusler bulk",
@@ -245,6 +264,27 @@ def _main():
     win_path = os.path.join(wannier_dir, "{}.win".format(prefix))
     with open(win_path, 'w') as fp:
         fp.write(wannier_input)
+
+    num_nodes = 1
+    mpi_tasks_per_node = 68 # Stampede2 KNL
+    total_mpi_tasks = num_nodes * mpi_tasks_per_node
+    openmp_threads_per_mpi_task = 1
+
+    # QE pools = number of k-points run in parallel.
+    # Must have total_mpi_tasks divisible by total_pools.
+    pools_per_node = 17
+    total_pools = num_nodes * pools_per_node
+
+    queue_config = {"machine": "stampede2", "queue": "normal", "max_jobs": 1,
+            "nodes": num_nodes, "mpi_tasks": total_mpi_tasks,
+            "openmp_threads_per_mpi_task": openmp_threads_per_mpi_task,
+            "qe_pools": total_pools,
+            "hours": 4, "minutes": 0, "wannier": True, "project": "A-ph911",
+            "prefix": prefix, "base_path": get_work(),
+            "outer_min": -12.0, "outer_max": 16.0,
+            "inner_min": -12.0, "inner_max": 14.0}
+
+    _write_queuefiles(work, prefix, queue_config, mpi_tasks_per_node)
 
 if __name__ == "__main__":
     _main()
