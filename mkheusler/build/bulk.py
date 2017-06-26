@@ -137,9 +137,8 @@ def _write_queuefiles(work, prefix, config, mpi_tasks_per_node):
     wan_run_config["calc"] = "wan_run"
     write_queuefile(wan_run_config)
 
-def _machine_settings(machine):
+def _machine_settings(machine, num_nodes):
     if machine == "stampede2":
-        num_nodes = 1
         mpi_tasks_per_node = 68
         total_mpi_tasks = num_nodes * mpi_tasks_per_node
         openmp_threads_per_mpi_task = 1
@@ -149,7 +148,6 @@ def _machine_settings(machine):
         pools_per_node = 17
         total_pools = num_nodes * pools_per_node
     elif machine == "ls5":
-        num_nodes = 1
         mpi_tasks_per_node = 24
         total_mpi_tasks = num_nodes * mpi_tasks_per_node
         openmp_threads_per_mpi_task = 1
@@ -158,8 +156,10 @@ def _machine_settings(machine):
         # Must have total_mpi_tasks divisible by total_pools.
         pools_per_node = 4
         total_pools = num_nodes * pools_per_node
+    else:
+        raise ValueError("unrecognized machine value")
 
-    return num_nodes, mpi_tasks_per_node, total_mpi_tasks, openmp_threads_per_mpi_task, total_pools
+    return mpi_tasks_per_node, total_mpi_tasks, openmp_threads_per_mpi_task, total_pools
 
 def _main():
     parser = argparse.ArgumentParser("Build and run Heusler bulk",
@@ -292,8 +292,9 @@ def _main():
         fp.write(wannier_input)
 
     machine = "ls5"
-    (num_nodes, mpi_tasks_per_node, total_mpi_tasks, openmp_threads_per_mpi_task,
-            total_pools) = _machine_settings(machine)
+    num_nodes = 1
+    (mpi_tasks_per_node, total_mpi_tasks, openmp_threads_per_mpi_task,
+            total_pools) = _machine_settings(machine, num_nodes)
 
     queue_config = {"machine": machine, "queue": "normal", "max_jobs": 1,
             "nodes": num_nodes, "mpi_tasks": total_mpi_tasks,

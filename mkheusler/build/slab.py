@@ -254,8 +254,9 @@ def _main():
         fp.write(wannier_input)
 
     machine = "ls5"
-    (num_nodes, mpi_tasks_per_node, total_mpi_tasks, openmp_threads_per_mpi_task,
-            total_pools) = _machine_settings(machine)
+    num_nodes = 6
+    (mpi_tasks_per_node, total_mpi_tasks, openmp_threads_per_mpi_task,
+            total_pools) = _machine_settings(machine, num_nodes)
 
     queue_config = {"machine": machine, "queue": "normal", "max_jobs": 1,
             "nodes": num_nodes, "mpi_tasks": total_mpi_tasks,
