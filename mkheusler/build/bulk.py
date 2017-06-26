@@ -98,7 +98,7 @@ def get_pseudo_dir(soc, sg15_adjust):
 def make_qe_config(system, latconst, soc, magnetic, num_bands, ecutwfc, ecutrho, degauss, Nk, band_path, pseudo_dir):
     pseudo = get_pseudo(system.get_chemical_symbols())
     weight = get_weight(system)
-    conv_thr = {"scf": 1e-8, "nscf": 1e-10, "bands": 1e-10}
+    conv_thr = {"scf": 1e-8, "nscf": 1e-8, "bands": 1e-8}
 
     qe_config = {"pseudo_dir": pseudo_dir, "pseudo": pseudo, "soc": soc, "magnetic": magnetic, "latconst": latconst, 
             "num_bands": num_bands, "weight": weight, "ecutwfc": ecutwfc, "ecutrho": ecutrho,
