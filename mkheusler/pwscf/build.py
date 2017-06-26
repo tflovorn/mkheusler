@@ -56,12 +56,13 @@ def build_qe(ase_system, prefix, calc_type, config):
     pseudo_dir = os.path.expandvars(config["pseudo_dir"])
     conv_thr = config["conv_thr"][calc_type]
     axes, latpos = get_cell(ase_system, config["latconst"])
+    surface = "surface" in config and config["surface"]
 
     # Make strings representing each section of the PW input.
     # These may be None.
     blocks = [("control", _control(calc_type, pseudo_dir, prefix)),
             ("system", _system(ase_system, calc_type, config)),
-            ("electrons", _electrons(calc_type, conv_thr)),
+            ("electrons", _electrons(calc_type, conv_thr, surface)),
             ("atomic_species", _atomic_species(config["pseudo"], config["weight"])),
             ("cell_parameters", _cell_parameters(axes)),
             ("atomic_positions",  _atomic_positions(latpos)),
@@ -153,14 +154,19 @@ def _atom_types(ase_system):
     num_atom_types = len(atom_types)
     return num_atoms, num_atom_types
 
-def _electrons(calc_type, conv_thr):
+def _electrons(calc_type, conv_thr, surface):
     nl = [" &electrons"]
     nl.append("    startingwfc='atomic+random',")
     nl.append("    diagonalization='david',")
     if calc_type == 'scf' or calc_type == 'relax':
+        if surface:
+            nl.append("    mixing_beta=0.1,")
+            nl.append("    mixing_mode='local-TF',")
+
         nl.append("    conv_thr={}".format(str(conv_thr)))
     else:
         nl.append("    diago_thr_init={}".format(str(conv_thr)))
+
     nl.append(" /")
     return "\n".join(nl)
 
