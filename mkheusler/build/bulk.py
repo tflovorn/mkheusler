@@ -202,10 +202,6 @@ def _main():
 
         if args.prefix is None:
             prefix = "{}{}{}_bulk".format(atoms[0], atoms[1], atoms[2])
-            if args.soc:
-                prefix = "{}_soc".format(prefix)
-            elif args.sg15_adjust:
-                prefix = "{}_adjust".format(prefix)
         else:
             prefix = args.prefix
     elif len(atoms) == 4:
@@ -214,14 +210,18 @@ def _main():
 
         if args.prefix is None:
             prefix = "{}2{}{}_bulk".format(atoms[0], atoms[2], atoms[3])
-            if args.soc:
-                prefix = "{}_soc".format(prefix)
-            elif args.sg15_adjust:
-                prefix = "{}_adjust".format(prefix)
         else:
             prefix = args.prefix
     else:
         raise ValueError("must specify 3 or 4 atoms (half-Heusler or full-Heusler)")
+
+    if args.prefix is None:
+        if args.soc:
+            prefix = "{}_soc".format(prefix)
+        if args.magnetic:
+            prefix = "{}_magnetic".format(prefix)
+        elif args.sg15_adjust:
+            prefix = "{}_adjust".format(prefix)
 
     system = bulk(atoms, 'fcc', a=args.latconst)
     verify_SC10_fcc(system, args.latconst)

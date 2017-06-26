@@ -133,18 +133,19 @@ def make_surface_system(atoms, latconst, layers, surface_normal_cubic, vacuum, s
 
     return system_slab
 
-def make_prefix(atoms, layers, soc, surface_termination):
+def make_prefix(atoms, layers, soc, magnetic, surface_termination):
     # TODO include growth dir in prefix?
     if len(atoms) == 3:
         prefix = "{}{}{}_slab_{}_surf_{}".format(atoms[0], atoms[1], atoms[2], layers, surface_termination)
-        if soc:
-            prefix = "{}_soc".format(prefix)
     elif len(atoms) == 4:
         prefix = "{}2{}{}_slab_{}_surf_{}".format(atoms[0], atoms[2], atoms[3], layers, surface_termination)
-        if soc:
-            prefix = "{}_soc".format(prefix)
     else:
         raise ValueError("must specify 3 or 4 atoms (half-Heusler or full-Heusler)")
+
+    if soc:
+        prefix = "{}_soc".format(prefix)
+    if magnetic:
+        prefix = "{}_magnetic".format(prefix)
 
     return prefix
 
@@ -197,7 +198,7 @@ def _main():
         raise ValueError("must specify 3 or 4 atoms (half-Heusler or full-Heusler)")
 
     if args.prefix is None:
-        prefix = make_prefix(atoms, args.layers, args.soc, args.surface_termination)
+        prefix = make_prefix(atoms, args.layers, args.soc, args.magnetic, args.surface_termination)
         if args.sg15_adjust:
             prefix = "{}_adjust".format(prefix)
     else:
@@ -220,6 +221,7 @@ def _main():
             "bands": args.Nk_bands}
     qe_config = make_qe_config(system_slab, args.latconst, args.soc, args.magnetic, num_bands, ecutwfc,
             ecutrho, args.degauss, Nk, band_path, pseudo_dir)
+    qe_config["surface"] = True
 
     qe_input = {}
     for calc_type in ["scf", "nscf", "bands"]:
