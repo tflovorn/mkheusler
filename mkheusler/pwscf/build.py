@@ -127,8 +127,11 @@ def _system(ase_system, calc_type, config):
         nl.append("    lspinorb=.true.,")
 
     if config["magnetic"]:
+        if not config["soc"]:
+            nl.append("    nspin=2,")
+
         for i in range(num_atom_types):
-            nl.append("    starting_magnetization({})=1,".format(i+1))
+            nl.append("    starting_magnetization({})=0.1,".format(i+1))
 
     if calc_type == 'scf':
         nl.append("    occupations='tetrahedra'")
