@@ -138,7 +138,9 @@ def _system(ase_system, calc_type, config):
         nl.append("    occupations='tetrahedra'")
     else:
         nl.append("    nosym=.true.,")
-        nl.append("    nbnd={},".format(config["num_bands"]))
+        if calc_type == 'nscf':
+            nl.append("    nbnd={},".format(config["num_bands"]))
+
         nl.append("    occupations='smearing',smearing='cold',degauss={}".format(str(config["degauss"])))
 
     nl.append(" /")    
