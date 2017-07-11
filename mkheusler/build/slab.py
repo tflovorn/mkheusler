@@ -33,7 +33,7 @@ def get_band_path(surface_normal_cubic):
     if surface_normal_cubic == (1, 1, 1):
         band_path_syms, band_path_labels = slab_fcc_111_path_syms()
         fcc_111_kpts = {"Gamma": np.array([0.0, 0.0, 0.0]),
-                "K": np.array([2/3, 2/3, 0.0]),
+                "K": np.array([1/3, 1/3, 0.0]),
                 "M": np.array([1/2, 0.0, 0.0])}
         band_path = [fcc_111_kpts[sym] for sym in band_path_syms]
     else:
