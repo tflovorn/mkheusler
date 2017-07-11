@@ -172,7 +172,7 @@ def _main():
             help="Charge density plane-wave cutoff energy (Ry)")
     parser.add_argument("--degauss", type=float, default=0.02,
             help="Delta-function smearing constant (Ry)")
-    parser.add_argument("--Nk_scf", type=int, default=16,
+    parser.add_argument("--Nk_scf", type=int, default=25,
             help="Number of k-points to use in SCF calculation (same in each direction along slab)")
     parser.add_argument("--Nk_nscf", type=int, default=8,
             help="Number of k-points to use in NSCF calculation (same in each direction along slab)")
